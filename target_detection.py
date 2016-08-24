@@ -71,7 +71,13 @@ class LDAAnalyzer:
     def get_topic(self, article):
         self.lock.acquire()
         self.lock.release()
-        bow = self.dictionary.doc2bow(article[IDX_TOKENS])
+        tokens = []
+        try:
+            tokens = article[IDX_TOKENS]
+        except:
+            print(article)
+        bow = self.dictionary.doc2bow(tokens)
+
         return self.model[bow]
 
     def load_from_file(self, path):
@@ -141,8 +147,8 @@ def resolve_target(data):
         def lda_dist(text_target):
             return lda_model.dist(text_target, text)
 
-        lda_min, lda_min_idx = get_min_dist(lda_dist, text)
-        return list_filtered[lda_min_idx]
+        lda_min, lda_min_idx = get_min_dist(lda_dist, list_filtered)
+        return list_candidate[lda_min_idx]
 
     def resolve_thread(texts):
         thread_dict = {}
@@ -177,32 +183,64 @@ def resolve_target(data):
                 target_id = get_head_article(article_id, 0)
                 type2_count = 0
                 head_article_1 = article_id
+                prev = [article]
             elif article[IDX_TEXT_TYPE] == '2':
-                if type2_count == 0 :                      ### Case 3
-                    target_id = get_head_article(article_id, 1)
-                else :
+                def handle_case3():
+                    if type2_count == 0:
+                        return get_head_article(article_id, 1)
+                    else:
+                        return -1
+                def handle_case4():
+                    id = -1
                     user_ref = contain_any(article[IDX_CONTENT], users)
-                    if len(user_ref) > 0:                 ### Case 4
+                    if len(user_ref) > 0:
                         try:
                             referee = texts_by(prev, user_ref)[-1]
-                            target_id = referee[IDX_ARTICLE_ID]
+                            id = referee[IDX_ARTICLE_ID]
                         except:
                             "None"
+                    return id
+                def handle_case5():
+                    user = article[IDX_AUTHOR_ID]
+                    list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
+                    cadidate_users = set(map(lambda x:x[IDX_AUTHOR_ID], list_filtered))
+                    if len(cadidate_users) == 1:
+                        return list_filtered[-1][IDX_ARTICLE_ID]
+                    else :
+                        return -1
+
+                target_id = handle_case3()       ### Case 3
+                if target_id == -1 :
+                    target_id = handle_case4()   ### Case 4
+                if target_id == -1 :
+                    target_id = handle_case5()
 
                 type2_count += 1
-            else :
+                prev.append(article)
+            else:
                 raise ValueError("Unexpected Case : " + str(article[IDX_TEXT_TYPE]))
 
-            if target_id == -1 :
-                target = find_target(prev, article)
-                target_dict[article_id] = target[IDX_ARTICLE_ID]
-                print("{} -> {}".format(article_id, target[IDX_ARTICLE_ID]))
+            if target_id == -1:
+                try:
+                    if len(prev) == 0:
+                        raise ("list must not be empty")
+                    user = article[IDX_AUTHOR_ID]
+                    list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
+                    if len(list_filtered) == 0:
+                        raise ("Not found")
+
+                    target = find_target(prev, article)
+                    target_id = target[IDX_ARTICLE_ID]
+                except:
+                    target_id = -1
+
+                target_dict[article_id] = target_id
+                print("{} -> {}".format(article_id, target_id))
                 counter.fail()
             else:
                 target_dict[article_id] = target_id
                 counter.suc()
 
-            prev.append(article)
             users.add(article[IDX_AUTHOR_ID])
         return thread_dict
 
@@ -237,17 +275,6 @@ def test_on_guldang():
     textType
     tokens
     """
-
-    def parse_token(articles):
-        result = []
-        for article in articles:
-            try:
-                tokens = article[IDX_TOKENS].split('/')
-                n_article = article[0:IDX_TOKENS] + [tokens]
-                result.append(n_article)
-            except Exception as e:
-                print(e)
-        return result
 
     print("DEBUG : Parsing corpus...")
     data = parse_token(data)
@@ -299,7 +326,6 @@ def test_on_guldang():
     print("Precision(tf-idf) = {}".format(counter_tfidf.precision()))
     print("Precision(Blind) =", counter_blind.precision())
     print("Tested case : {}".format(counter_lda.total()))
-
 
 
 def analyze_thread(counter_lda, counter_tfidf, counter_blind, lda_model, tfidf_model, texts):
@@ -358,7 +384,8 @@ def test_bobae():
     cursor = 0
     size = 1000
     data = load_csv_euc_kr("input\\bobae_car_tkn.csv")[cursor:cursor + size]
-    resolve_target(data)
+    data_token_parsed = parse_token(data)
+    resolve_target(data_token_parsed)
 
 if __name__ == '__main__':
     freeze_support()

@@ -37,6 +37,18 @@ def contain_any(text, iterable):
     return ""
 
 
+def parse_token(articles):
+    result = []
+    for article in articles:
+        try:
+            tokens = article[IDX_TOKENS].split('/')
+            n_article = article[0:IDX_TOKENS] + [tokens]
+            result.append(n_article)
+        except Exception as e:
+            print(e)
+    return result
+
+
 class FailCounter:
     def __init__(self):
         self.lock = threading.Lock()
