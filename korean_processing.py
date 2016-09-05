@@ -6,9 +6,13 @@ from konlpy.tag import Twitter
 
 
 def tokenize_all(articles):
-    tagger = Twitter()
+    tagger = Kkma()
     result = []
+    count = 0
     for article in articles:
+        count += 1
+        if count % 100 == 0 :
+            print(count)
         try:
             text = article[IDX_TITLE] + " " + article[IDX_CONTENT]
             tokens = list(map(lambda x: x[0], tagger.pos(text)))
@@ -23,7 +27,7 @@ def tokenize_all(articles):
 
 def add_tokenzied(in_path, out_path):
     print("DEBUG : Tokenizing corpus...")
-    data = load_csv_euc_kr(in_path)
+    data = load_csv_euc_kr(in_path)[0:2000]
     data = tokenize_all(data)
     save_csv_euc_kr(data, out_path)
 

@@ -22,8 +22,14 @@ def remove_substring(word_list):
 def match_all(content, lst):
     words = []
     for item in lst:
-        if item.lower() in content.lower():
+        index = content.lower().find(item.lower())
+        if index == 0 :
             words.append(item)
+        elif index > 0 :
+            c = content[index-1]
+            if c == '.' or c == ' ' or c == '\n':
+                words.append(item)
+
 
     return remove_substring(words)
 
@@ -83,18 +89,26 @@ def analyze_bobaedream():
     keywords = car_keyword + keyword_hyundai
     kkma = Kkma()
     data = load_csv_euc_kr("input\\bobae_car.csv")
+    corpus = []
 
-    for article in data[:1000]:
+    corpus_index = 0
+    for article in data:
         content = article[IDX_TITLE] + "\n" + article[IDX_CONTENT]
+        if article[IDX_TEXT_TYPE] == '0' :#and len(content) > 200 :
+            continue
         #sentences = kkma.sentences(content)
         #for text in sentences:
         text = content
         words = match_all(text, keywords)
         if len(words) > 0 :
-            found_words = ",".join(words)
-            print("[{}] : {}".format(found_words, text))
-            print("----------------------------------")
+ #           found_words = ",".join(words)
+ #           print("[{}] : {}".format(found_words, text))
+            for word in words:
+                entry = [corpus_index, article[IDX_ARTICLE_ID], article[IDX_THREAD_ID], article[IDX_CONTENT], word, 0]
+                corpus.append(entry)
+                corpus_index += 1
 
-
+    #save_csv_euc_kr(corpus, "input\\corpus.csv")
+    save_csv_utf(corpus, "input\\corpus.csv")
 
 analyze_bobaedream()

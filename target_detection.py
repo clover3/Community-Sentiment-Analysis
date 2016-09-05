@@ -2,12 +2,12 @@
 from multiprocessing import Process, freeze_support
 import threading
 
+
 from clover_lib import *
 from nltk.tokenize import RegexpTokenizer
 import konlpy.tag
 from konlpy.utils import pprint
-from gensim import corpora, models
-import gensim
+import gensim.models
 import itertools
 import random
 import time
@@ -16,7 +16,6 @@ import logging
 
 # 전체 데이터에 대해서 LDA를 돌린다.
 
-logging.basicConfig(filename='log\\target_detection.log',level=logging.INFO)
 
 
 def get_min_dist(dist_func, targets):
@@ -30,6 +29,7 @@ LDA_PICKLE_PATH = "model\\lda"
 
 TFIDF_PICKLE_PATH = "model\\tfidf"
 TFIDF_DICT_PICKLE_PATH = 'model\\tfidf.dict'
+
 
 class TFIDFAnalyzer:
     def __init__(self):
@@ -101,11 +101,13 @@ class LDAAnalyzer:
         t2 = self.get_topic(text2)
         return gensim.matutils.cossim(t1,t2)
 
+
 class UserNotFoundError(Exception):
     def __init__(self, value):
         self.value = value
     def __str__(self):
         return repr(self.value)
+
 
 class HeadNotFoundError(Exception):
     def __init__(self, value):
@@ -123,6 +125,7 @@ def texts_by(texts, user):
         raise UserNotFoundError(user)
     return result
 
+
 def resolve_target(data):
     target_dict = {}
 
@@ -130,6 +133,7 @@ def resolve_target(data):
     print("DEBUG : Loading LDA Model...")
     lda_model.load_from_file(LDA_PICKLE_PATH)
 
+    case_counter = CaseCounter()
     counter = FailCounter()
     """
     Case1. Text Type = 0 => 의존 텍스트 없음
@@ -179,14 +183,17 @@ def resolve_target(data):
                 target_id = 0
                 type2_count = 0
                 head_article_0 = article_id
+                case_counter.add_count(1)
             elif article[IDX_TEXT_TYPE] == '1':             ### Case 2
                 target_id = get_head_article(article_id, 0)
                 type2_count = 0
                 head_article_1 = article_id
                 prev = [article]
+                case_counter.add_count(2)
             elif article[IDX_TEXT_TYPE] == '2':
                 def handle_case3():
                     if type2_count == 0:
+                        case_counter.add_count(3)
                         return get_head_article(article_id, 1)
                     else:
                         return -1
@@ -195,16 +202,19 @@ def resolve_target(data):
                     user_ref = contain_any(article[IDX_CONTENT], users)
                     if len(user_ref) > 0:
                         try:
+                            case_counter.add_count(4)
                             referee = texts_by(prev, user_ref)[-1]
                             id = referee[IDX_ARTICLE_ID]
                         except:
                             "None"
+
                     return id
                 def handle_case5():
                     user = article[IDX_AUTHOR_ID]
                     list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
                     cadidate_users = set(map(lambda x:x[IDX_AUTHOR_ID], list_filtered))
                     if len(cadidate_users) == 1:
+                        case_counter.add_count(5)
                         return list_filtered[-1][IDX_ARTICLE_ID]
                     else :
                         return -1
@@ -223,25 +233,27 @@ def resolve_target(data):
             if target_id == -1:
                 try:
                     if len(prev) == 0:
-                        raise ("list must not be empty")
+                        raise Exception("list must not be empty")
                     user = article[IDX_AUTHOR_ID]
                     list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
                     if len(list_filtered) == 0:
-                        raise ("Not found")
+                        raise Exception("Not found")
 
+                    case_counter.add_count(6)
                     target = find_target(prev, article)
                     target_id = target[IDX_ARTICLE_ID]
-                except:
+                except Exception as e :
+                    print(e)
                     target_id = -1
 
                 target_dict[article_id] = target_id
-                print("{} -> {}".format(article_id, target_id))
                 counter.fail()
             else:
                 target_dict[article_id] = target_id
                 counter.suc()
 
             users.add(article[IDX_AUTHOR_ID])
+
         return thread_dict
 
     for key, group in itertools.groupby(data, lambda x: x[IDX_THREAD_ID]):
@@ -252,6 +264,7 @@ def resolve_target(data):
     print("Data : ", len(data))
     print("Resolved : ", len(target_dict))
     print("Precision() =", counter.precision())
+    case_counter.enum_count()
 
     return target_dict
 
@@ -390,6 +403,7 @@ def test_bobae():
 if __name__ == '__main__':
     freeze_support()
     #test_on_guldang()
+
     test_bobae()
 
 #create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])

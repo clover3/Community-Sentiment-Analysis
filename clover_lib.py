@@ -22,6 +22,9 @@ def save_csv_euc_kr(data, path):
     with codecs.open(path, "wb", 'cp949') as f:
         csv.writer(f).writerows(data)
 
+def save_csv_utf(data, path):
+    with codecs.open(path, "wb", 'utf-8') as f:
+        csv.writer(f).writerows(data)
 
 def load_list(path):
     with codecs.open(path, "r", 'utf-8') as f:
@@ -47,6 +50,23 @@ def parse_token(articles):
         except Exception as e:
             print(e)
     return result
+
+
+class CaseCounter:
+    def __init__(self):
+        self.dic = {}
+
+    def add_count(self, id):
+        if id in self.dic:
+            count = self.dic[id]
+            self.dic[id] = count + 1
+        else:
+            self.dic[id] = 1
+
+    def enum_count(self):
+        for key in self.dic.keys():
+            print("{} : {}".format(key, self.dic[key]))
+
 
 
 class FailCounter:
