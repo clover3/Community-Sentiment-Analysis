@@ -1,4 +1,4 @@
-# -*- coding: euc-kr -*-
+# -*- coding: utf-8 -*-
 import csv
 import codecs
 import threading
@@ -14,7 +14,7 @@ IDX_TOKENS = 10
 
 
 def load_csv(path):
-    with codecs.open(path, "rb", "utf-8") as f:
+    with open(path, "rb") as f:
         return [line for line in csv.reader(f)]
 
 
@@ -47,13 +47,13 @@ def contain_any(text, iterable):
 
 def parse_token(articles):
     result = []
-    for article in articles:
+    for i,article in enumerate(articles):
         try:
             tokens = article[IDX_TOKENS].split('/')
             n_article = article[0:IDX_TOKENS] + [tokens]
             result.append(n_article)
         except Exception as e:
-            print(e)
+            print i,(e)
     return result
 
 

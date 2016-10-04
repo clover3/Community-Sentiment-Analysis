@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from clover_lib import *
 from keras.models import Sequential
 from keras.layers import Dense
@@ -10,7 +11,7 @@ from keras.optimizers import Adadelta
 import cPickle
 import numpy
 import os
-import codecs, csv
+import csv
 
 seed = 7
 numpy.random.seed(seed)
@@ -18,16 +19,17 @@ numpy.random.seed(seed)
 len_sentence = 64
 
 
+
 def load_vec(fname, vocab, binary = True):
     """
     Loads 300x1 word vecs from Google (Mikolov) word2vec
     """
-    print("  loading word2vec...")
+    print("  Loading word2vec...")
     w2v_cache = "cache\\w2v"
     if os.path.isfile(w2v_cache):
         return cPickle.load(open(w2v_cache,"rb"))
 
-    mode = (binary if "rb" else "r")
+    mode = ("rb" if binary else "r")
     word_vecs = {}
     with open(fname, mode) as f:
         header = f.readline()
@@ -53,8 +55,8 @@ def load_vec(fname, vocab, binary = True):
                 word_vecs[word] = getline()
             else:
                 getline()
-
-    cPickle.dump(word_vecs, open(w2v_cache, "wb"))
+    print("  Loaded word2vec...")
+#    cPickle.dump(word_vecs, open(w2v_cache, "wb"))
     return word_vecs
 
 
@@ -66,6 +68,7 @@ def get_voca(text_list):
 
 
 def build_index(voca, w2v, k):
+    print("building index..")
     index = 1
     word2idx = dict()
     idx2vect = numpy.zeros(shape=(len(voca) + 1, k), dtype='float32')
@@ -76,7 +79,6 @@ def build_index(voca, w2v, k):
             word2idx[word] = index
             idx2vect[index] = w2v[word]
             index += 1
-
     for word in voca:
         if word not in word2idx:
             word2idx[word] = index
@@ -102,25 +104,34 @@ class DataSet:
         self.idx2vect = idx2vect
         self.len_embedding = len_embedding
 
-def load_data_label(label_path, path_article, w2v_path, dimension):
-    IDX_R_ARTICLE = 1
-    IDX_R_KEYWORD= 2
-    IDX_R_LABEL = 3
 
+def load_data_label(label_path, path_article, w2v_path, dimension):
+    IDX_R_THREAD = 1
+    IDX_R_ARTICLE = 2
+    IDX_R_KEYWORD= 3
+    IDX_R_LABEL = 4
+    print("Loading Data...")
     # load label table
     labels = load_csv(label_path)
-    labels = [label for label in labels if label[IDX_R_LABEL] == 0 or label[IDX_R_LABEL] == 2 ]
-
+    labels = [label for label in labels if label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' ]
+    n_pos =  len([label for label in labels if label[IDX_R_LABEL] == '1'])
+    n_neg = len([label for label in labels if label[IDX_R_LABEL] == '3'])
+    print("  Corpus size : positive={} negative={}...".format(n_pos,n_neg) )
+    print("  Loading articles...")
     # load article table
-    articles = parse_token(load_csv(path_article))
+    articles = load_csv(path_article)
+    print("  parsing tokens...")
+    articles = parse_token(articles)
     article_dic = dict()
     for article in articles :
         article_id = article[IDX_ARTICLE_ID]
-        article_dic[article_id] = article
+        thread_id = article[IDX_THREAD_ID]
+        article_dic[(article_id,thread_id)] = article
 
     voca = set(flatten([article[IDX_TOKENS] for article in articles]))
 
     w2v = load_vec(w2v_path, voca, False)
+    print("  Loaded w2v len = {}".format(len(w2v)) )
     word2idx, idx2vect = build_index(voca, w2v, dimension)
 
     def indexize(label):
@@ -133,15 +144,18 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
             ### IT CONTAINS BUG! ###
 
             scan = ""
-            for i, token in enumerate(tokens)[:-1]:
+            for i, token in list(enumerate(tokens))[::-1]:
                 scan = token + scan
-                if keyword in scan:
+                if keyword.lower() in scan.lower():
                     return i
 
-            raise "Keyword not found!!"
+            return 0
+            print keyword
+            print article[IDX_CONTENT]
+            print scan
         #  lookup the corpus to find specified article
 
-        article = article_dic[label[IDX_R_ARTICLE]]
+        article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
         keyword = label[IDX_R_KEYWORD]
         idx_keyword = find_keyword(article, keyword)
         pre_len = (len_sentence-1) / 2
@@ -166,8 +180,8 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
                 result.append(0)
         return result
 
-    data_set_x = [indexize(label) for label in labels]
-    data_set_y = [label[IDX_R_LABEL] for label in labels]
+    data_set_x = numpy.array([indexize(label) for label in labels])
+    data_set_y = [int(label[IDX_R_LABEL]) for label in labels]
     return DataSet(data_set_x, data_set_y, idx2vect, dimension)
 
 
@@ -287,13 +301,13 @@ def run_english():
 def run_korean():
     len_embedding = 300
 
-    path_lable = "input\\label.csv"
-    w2v_path = "input\\embedding300"
-    path_article = "input\\bobae....."
+    path_lable = "input\\corpus_small.csv"
+    w2v_path = "..\\input\\korean_word2vec_wv_300.txt"
+    path_article = "..\\input\\bobae_car_tkn_twitter.csv"
 
     data = load_data_label(path_lable, path_article, w2v_path, len_embedding)
 
-    model = get_model_dirty(len_embedding, data, [3,4,5])
+    model = get_model_dirty(len_embedding, data, [3,4,5,6,7,8,9])
     #model = get_model(len_embedding, data.voca_size)
 
     print("Training Model...")
@@ -304,4 +318,4 @@ def run_korean():
               shuffle=True)
 
 
-run_english()
+run_korean()
