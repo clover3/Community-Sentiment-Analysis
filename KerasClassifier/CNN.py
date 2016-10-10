@@ -18,16 +18,19 @@ numpy.random.seed(seed)
 
 len_sentence = 64
 
+"""
+predefined words : 0 : padding 1 : keyword marker
 
+"""
 
 def load_vec(fname, vocab, binary = True):
     """
     Loads 300x1 word vecs from Google (Mikolov) word2vec
     """
     print("  Loading word2vec...")
-    w2v_cache = "cache\\w2v"
-    if os.path.isfile(w2v_cache):
-        return cPickle.load(open(w2v_cache,"rb"))
+    #w2v_cache = "cache\\w2v"
+    #if os.path.isfile(w2v_cache):
+    #    return cPickle.load(open(w2v_cache,"rb"))
 
     mode = ("rb" if binary else "r")
     word_vecs = {}
@@ -69,11 +72,15 @@ def get_voca(text_list):
 
 def build_index(voca, w2v, k):
     print("building index..")
-    index = 1
+    predefined_word = 5
+    index = predefined_word
     word2idx = dict()
-    idx2vect = numpy.zeros(shape=(len(voca) + 1, k), dtype='float32')
+    idx2vect = numpy.zeros(shape=(len(voca) + predefined_word, k), dtype='float32')
 
-    idx2vect[0] = numpy.zeros(k, dtype='float32')
+    for i in range(predefined_word):
+        #idx2vect[i] = numpy.zeros(k, dtype='float32')
+        idx2vect[i] = numpy.random.uniform(-0.25,0.25,k)
+
     if w2v is not None:
         for word in w2v.keys():
             word2idx[word] = index
@@ -169,19 +176,26 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
         else :
             begin = idx_keyword - pre_len
             end = idx_keyword - pre_len + len_sentence
+        print "Article[{}]/[{}] [{}]:".format(label[IDX_R_ARTICLE], label[IDX_R_THREAD],label[IDX_R_LABEL])
 
         # if lenght exceed, pad with zero
         tokens = article[IDX_TOKENS]
         result = []
         for i in range(begin, end):
-            if i < len(tokens) :
+            if i == idx_keyword:
+                result.append(1) ## overwrite the keyword
+                print 1,
+            elif i < len(tokens) :
                 result.append(word2idx[tokens[i]])
+                print word2idx[tokens[i]],
             else :
                 result.append(0)
+                print 0,
+        print "\\n"
         return result
 
     data_set_x = numpy.array([indexize(label) for label in labels])
-    data_set_y = [int(label[IDX_R_LABEL]) for label in labels]
+    data_set_y = [(int(label[IDX_R_LABEL])-1)/2 for label in labels]
     return DataSet(data_set_x, data_set_y, idx2vect, dimension)
 
 
@@ -246,12 +260,11 @@ def get_model_dirty(len_embedding, data, filter_sizes):
     hidden_dims = 100
     size_voca = len(data.idx2vect)
     sent_input = Input(shape=(len_sentence,), dtype='int32', name='sent_level_input')
-    print " Embedding Layer ",
+    print " Embedding Layer "
     sent_x = Embedding(size_voca, len_embedding,
                        input_length=len_sentence, weights=[data.idx2vect])(sent_input)
     sent_x = Dropout(dropout_prob[0], input_shape=(len_sentence, len_embedding))(sent_x)
 
-    print " Convolution Layer ",
     multiple_filter_output= []
     convs = []
     pools = []
@@ -275,7 +288,6 @@ def get_model_dirty(len_embedding, data, filter_sizes):
     model = Model(input=sent_input, output=sent_loss)
     #model.load_weights("YoonKim_mr.h5")
     model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=adadelta)
-    print "  Done!"
     return model
 
 def run_english():
@@ -301,7 +313,7 @@ def run_english():
 def run_korean():
     len_embedding = 300
 
-    path_lable = "input\\corpus_small.csv"
+    path_lable = "input\\corpus_size3722.csv"
     w2v_path = "..\\input\\korean_word2vec_wv_300.txt"
     path_article = "..\\input\\bobae_car_tkn_twitter.csv"
 
@@ -313,7 +325,7 @@ def run_korean():
     print("Training Model...")
     model.fit(data.train_x, data.train_y,
               batch_size=50,
-              nb_epoch=40,
+              nb_epoch=10,
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
