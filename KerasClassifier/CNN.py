@@ -91,7 +91,6 @@ def build_index(voca, w2v, k):
             word2idx[word] = index
             idx2vect[index] = numpy.zeros(k, dtype='float32')
             index += 1
-
     return word2idx, idx2vect
 
 
@@ -176,7 +175,7 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
         else :
             begin = idx_keyword - pre_len
             end = idx_keyword - pre_len + len_sentence
-        print "Article[{}]/[{}] [{}]:".format(label[IDX_R_ARTICLE], label[IDX_R_THREAD],label[IDX_R_LABEL])
+        #print "Article[{}]/[{}] [{}]:".format(label[IDX_R_ARTICLE], label[IDX_R_THREAD],label[IDX_R_LABEL])
 
         # if lenght exceed, pad with zero
         tokens = article[IDX_TOKENS]
@@ -184,14 +183,10 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
         for i in range(begin, end):
             if i == idx_keyword:
                 result.append(1) ## overwrite the keyword
-                print 1,
             elif i < len(tokens) :
                 result.append(word2idx[tokens[i]])
-                print word2idx[tokens[i]],
             else :
                 result.append(0)
-                print 0,
-        print "\\n"
         return result
 
     data_set_x = numpy.array([indexize(label) for label in labels])
@@ -293,10 +288,10 @@ def get_model_dirty(len_embedding, data, filter_sizes):
 def run_english():
     len_embedding = 300
 
-    path_prefix = "input\\rt-polarity."
+    path_prefix = "..\\input\\rt-polarity."
     pos_path = path_prefix + "pos"
     neg_path = path_prefix + "neg"
-    w2v_path = "input\\GoogleNews-vectors-negative300.bin"
+    w2v_path = "..\\input\\GoogleNews-vectors-negative300.bin"
 
     data = load_data(pos_path, neg_path, w2v_path, len_embedding)
 
@@ -311,10 +306,10 @@ def run_english():
               shuffle=True)
 
 def run_korean():
-    len_embedding = 300
+    len_embedding = 50
 
-    path_lable = "input\\corpus_size3722.csv"
-    w2v_path = "..\\input\\korean_word2vec_wv_300.txt"
+    path_lable = "..\\input\\corpus4803.csv"
+    w2v_path = "..\\input\\korean_word2vec_wv_50.txt"
     path_article = "..\\input\\bobae_car_tkn_twitter.csv"
 
     data = load_data_label(path_lable, path_article, w2v_path, len_embedding)
@@ -325,7 +320,7 @@ def run_korean():
     print("Training Model...")
     model.fit(data.train_x, data.train_y,
               batch_size=50,
-              nb_epoch=10,
+              nb_epoch=40,
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
