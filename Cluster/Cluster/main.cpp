@@ -221,8 +221,13 @@ void runner()
 	delete eb;
 }
 
+extern void all_test();
+extern void am_main();
+
 int main()
 {
-	runner();
+	//all_test();
+
+	am_main();
 	return 0;
 }

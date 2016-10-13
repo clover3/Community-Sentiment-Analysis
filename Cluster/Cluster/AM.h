@@ -5,15 +5,20 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
 #include <algorithm>
 #include <future>
 #include <Windows.h>
 using namespace std;
 
+//------------ Type Definition -----------//
+
 using Doc = vector <int>;
 using ItemSet = vector <int> ;
 using FrequentSet = set<ItemSet>;
 using Corpus = vector < Doc > ;
+
+// ----------------------------------------//
 
 vector<Doc> load_article(string path);
 bool all_true(vector<bool> v);
@@ -29,3 +34,12 @@ FrequentSet prune_candidate(const vector<Doc>& docs, const FrequentSet& C_k, con
 
 
 void print_function_complete(char* function_name);
+
+template <typename T>
+class Set2 : public set<T>
+{
+public:
+	bool has(T elem){
+		return (this->find(elem) != this->end());
+	}
+};

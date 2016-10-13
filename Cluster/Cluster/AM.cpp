@@ -1,5 +1,39 @@
 #include "AM.h"
 
+#ifdef _WINDOWS_
+#elif
+#include <sys/time.h>
+#include <unistd.h>
+class __GET_TICK_COUNT
+{
+public:
+	__GET_TICK_COUNT()
+	{
+		if (gettimeofday(&tv_, NULL) != 0)
+			throw 0;
+	}
+	timeval tv_;
+};
+__GET_TICK_COUNT timeStart;
+
+unsigned long GetTickCount()
+{
+	static time_t   secStart = timeStart.tv_.tv_sec;
+	static time_t   usecStart = timeStart.tv_.tv_usec;
+	timeval tv;
+	gettimeofday(&tv, NULL);
+	return (tv.tv_sec - secStart) * 1000 + (tv.tv_usec - usecStart) / 1000;
+}
+#endif
+
+
+DWORD lt = GetTickCount();
+DWORD elapsed()
+{
+	DWORD dt = GetTickCount() - lt;
+	lt = GetTickCount();
+	return dt;
+	}
 
 void print_function_complete(char* function_name)
 {
@@ -184,7 +218,10 @@ FrequentSet prune_candidate_v(
 
 FrequentSet prune_candidate_mt(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
 {
-	int nThread = 8;
+	int nThread = std::thread::hardware_concurrency();
+	assert(nThread >= 0 );
+	assert(nThread < 256);
+
 	vector<ItemSet> data(C_k.begin(), C_k.end());
 	int interval = data.size() / nThread;
 	vector<future<FrequentSet>> fVector;
@@ -220,13 +257,6 @@ FrequentSet prune_candidate(const vector<Doc>& docs,const FrequentSet& C_k,const
 	return prune_candidate_v(v.begin(), v.end(), docs, L_prev, min_dup);
 }
 
-DWORD lt = GetTickCount();
-DWORD elapsed()
-{
-	DWORD dt = GetTickCount() - lt;
-	lt = GetTickCount();
-	return dt;
-}
 
 FrequentSet build_C2_sub(const vector<ItemSet>& l1, int st1, int ed1, int st2, int ed2)
 {
@@ -296,6 +326,29 @@ FrequentSet build_C2(FrequentSet L1)
 	return C2;
 }
 
+
+int docsize(vector<Doc> docs)
+{
+	int sum = 0;
+	for (auto doc : docs)
+		sum += doc.size();
+	
+	return sum;
+}
+
+void filter_not_in(vector<Doc>& docs, Set2<int> interested_word)
+{
+	transform(docs.begin(), docs.end(), docs.begin(), [&interested_word](Doc doc){
+		Doc filtered_doc;
+		for (int word : doc)
+		{
+			if (interested_word.has(word))
+				filtered_doc.push_back(word);
+		}
+		return filtered_doc;
+	});
+}
+
 void am(vector<Doc> docs, int max_word_id)
 {
 	vector<int> counts;
@@ -308,6 +361,7 @@ void am(vector<Doc> docs, int max_word_id)
 		}
 	}
 
+	Set2<int> L1;
 	vector<FrequentSet> L;
 	vector<FrequentSet> C;
 	L.resize(10);
@@ -322,9 +376,15 @@ void am(vector<Doc> docs, int max_word_id)
 			vector<int> items;
 			items.push_back(i);
 			L[0].insert(items);
+			L1.insert(i);
 		}
 	}
 	cout << L[0].size() << " sets. " << elapsed() << "ms" << endl;
+
+	printf("Doc size reduction : %d->", docsize(docs));
+	filter_not_in(docs, L1);
+	printf("%d\n", docsize(docs));
+
 	cout << "Generate C2...";
 	C[1] = build_C2(L[0]);
 	cout << C[1].size() << " sets. " << elapsed() << "ms" <<endl;
@@ -394,7 +454,6 @@ int max_word_index(Corpus docs){
 
 void am_main()
 {
-	vector<Doc> docs = load_article("bobae_as_index");
+	vector<Doc> docs = load_article("bobae_as_index_sw");
 	am(docs, max_word_index(docs));
-
 }
