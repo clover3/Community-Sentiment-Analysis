@@ -8,7 +8,7 @@
 
 #include <algorithm>
 #include <future>
-#include <Windows.h>
+//#include <Windows.h>
 using namespace std;
 
 //------------ Type Definition -----------//
@@ -33,7 +33,7 @@ FrequentSet generate_candidate(FrequentSet L_k);
 FrequentSet prune_candidate(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup);
 
 
-void print_function_complete(char* function_name);
+void print_function_complete(const char* function_name);
 
 template <typename T>
 class Set2 : public set<T>
