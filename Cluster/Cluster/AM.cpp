@@ -1,7 +1,7 @@
 #include "AM.h"
 
 #ifdef _WINDOWS_
-#elif
+#else
 #include <sys/time.h>
 #include <unistd.h>
 class __GET_TICK_COUNT
@@ -24,6 +24,7 @@ unsigned long GetTickCount()
 	gettimeofday(&tv, NULL);
 	return (tv.tv_sec - secStart) * 1000 + (tv.tv_usec - usecStart) / 1000;
 }
+using DWORD = unsigned long;
 #endif
 
 
@@ -35,7 +36,7 @@ DWORD elapsed()
 	return dt;
 	}
 
-void print_function_complete(char* function_name)
+void print_function_complete(const char* function_name)
 {
 	printf("%s Completed\n", function_name);
 }
@@ -210,7 +211,6 @@ FrequentSet prune_candidate_v(
 		else
 			prune++;
 	}
-	//printf("p/n = %d/%d\n", prune, nprune);
 	
 	return L2;
 }
@@ -219,6 +219,7 @@ FrequentSet prune_candidate_v(
 FrequentSet prune_candidate_mt(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
 {
 	int nThread = std::thread::hardware_concurrency();
+    printf("Working on %d threads\n", nThread);
 	assert(nThread >= 0 );
 	assert(nThread < 256);
 
@@ -234,7 +235,7 @@ FrequentSet prune_candidate_mt(const vector<Doc>& docs, const FrequentSet& C_k, 
 		else
 			end = data.end();
 
-		fVector.push_back(async(prune_candidate_v, begin, end, docs, L_prev, min_dup));
+		fVector.push_back(async(launch::async, prune_candidate_v, begin, end, docs, L_prev, min_dup));
 	}
 
 	
