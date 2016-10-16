@@ -349,6 +349,22 @@ void filter_not_in(vector<Doc>& docs, Set2<int> interested_word)
 	});
 }
 
+void save_FrequentSet(string path, const FrequentSet& fs)
+{
+	ofstream out(path);
+	for (ItemSet item : fs)
+	{
+		for (int token : item)
+			out << token << "\t";
+		out << endl;
+	}
+}
+
+string genLpath(int i)
+{
+	return string("L") + to_string(i) + string(".txt");
+}
+
 void am(vector<Doc> docs, int max_word_id)
 {
 	vector<int> counts;
@@ -380,6 +396,7 @@ void am(vector<Doc> docs, int max_word_id)
 		}
 	}
 	cout << L[0].size() << " sets. " << elapsed() << "ms" << endl;
+	save_FrequentSet(genLpath(1), L[0]);
 
 	printf("Doc size reduction : %d->", docsize(docs));
 	filter_not_in(docs, L1);
@@ -393,7 +410,7 @@ void am(vector<Doc> docs, int max_word_id)
 	// Make L2
 	L[1] = prune_candidate_mt(docs, C[1], L[0], min_dup);
 	cout << L[1].size() << " sets. " << elapsed() << "ms" << endl;
-
+	save_FrequentSet(genLpath(2), L[1]);
 	// Generate C3
 
 	for (int i = 2; i < 10; i++)
@@ -406,6 +423,7 @@ void am(vector<Doc> docs, int max_word_id)
 		cout << "Pruning L" << i + 1 << "...";
 		L[i] = prune_candidate_mt(docs, C[i], L[i-1], min_dup);
 		cout << L[i].size() << " sets. " << elapsed() << "ms" << endl;
+		save_FrequentSet(genLpath(i+1), L[i]);
 	}
 
 	
@@ -421,7 +439,7 @@ vector<Doc> load_article(string path)
 	while (std::getline(infile, line))
 	//for (int i = 0; i < 10000; i++)
 	{
-		std::getline(infile, line);
+	//	std::getline(infile, line);
 		
 		set<int> wordSet;
 		std::istringstream iss(line);

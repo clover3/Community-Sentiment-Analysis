@@ -32,7 +32,7 @@ ItemSet join(const ItemSet set1, const ItemSet set2);
 FrequentSet generate_candidate(FrequentSet L_k);
 FrequentSet prune_candidate(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup);
 
-
+void save_FrequentSet(string,const FrequentSet&);
 void print_function_complete(char* function_name);
 
 template <typename T>
