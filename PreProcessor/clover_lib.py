@@ -13,6 +13,14 @@ IDX_TEXT_TYPE = 9
 IDX_TOKENS = 10
 
 
+
+def flatten(z):
+    return [y for x in z for y in x]
+
+def load_csv(path):
+    with open(path, "rb") as f:
+        return [line for line in csv.reader(f)]
+
 def load_csv_euc_kr(path):
     with codecs.open(path, "rb", "cp949") as f:
         return [line for line in csv.reader(f)]
@@ -39,6 +47,10 @@ def contain_any(text, iterable):
             return keyword
     return ""
 
+def parse_sentence_token(articles):
+    sentence_list = flatten([article[IDX_TOKENS].split('|') for article in articles])
+    result = [sentence.split('/') for sentence in sentence_list]
+    return result
 
 def parse_token(articles):
     result = []
