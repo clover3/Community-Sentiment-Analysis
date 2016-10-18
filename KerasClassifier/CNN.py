@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
+#os.environ['THEANO_FLAGS'] = 'device=gpu1'
+
 from clover_lib import *
 from keras.models import Sequential
 from keras.layers import Dense
@@ -16,7 +19,7 @@ import csv
 seed = 7
 numpy.random.seed(seed)
 
-len_sentence = 64
+len_sentence = 800
 
 """
 predefined words : 0 : padding 1 : keyword marker
@@ -81,16 +84,24 @@ def build_index(voca, w2v, k):
         #idx2vect[i] = numpy.zeros(k, dtype='float32')
         idx2vect[i] = numpy.random.uniform(-0.25,0.25,k)
 
+    f = open("missing_w2v.txt", "w")
     if w2v is not None:
         for word in w2v.keys():
             word2idx[word] = index
             idx2vect[index] = w2v[word]
             index += 1
+
+    match_count = index
+
     for word in voca:
         if word not in word2idx:
+            f.write(word + "\n")
             word2idx[word] = index
             idx2vect[index] = numpy.zeros(k, dtype='float32')
             index += 1
+    f.close()
+
+    print "w2v {} of {} matched".format(match_count, index)
     return word2idx, idx2vect
 
 
@@ -119,7 +130,7 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
     print("Loading Data...")
     # load label table
     labels = load_csv(label_path)
-    labels = [label for label in labels if label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' ]
+    labels = [label for label in labels if label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' or label[IDX_R_LABEL] == '2' ]
     n_pos =  len([label for label in labels if label[IDX_R_LABEL] == '1'])
     n_neg = len([label for label in labels if label[IDX_R_LABEL] == '3'])
     print("  Corpus size : positive={} negative={}...".format(n_pos,n_neg) )
@@ -216,7 +227,42 @@ def load_data(pos_path, neg_path, w2v_path, dimension):
     dataset_y = len(raw_pos)*[1] + len(raw_neg) * [0]
     return DataSet(dataset_x, dataset_y, idx2vect, dimension)
 
+def load_data_carsurvey(path_label, w2v_path, dimension):
+    ## modelName,fault,summary,content,label,modelYear,date,buyAnother,manufacturer
+    data = load_csv(path_label)
+    data = filter(lambda x: x[4]!="neutral", data)
+    raw_data = [line[2] for line in data]
 
+    w2v = load_vec(w2v_path, get_voca(raw_data), False)  # w2v : word->float[]
+
+    voca = get_voca(raw_data)
+    word2idx, idx2vect = build_index(voca, w2v, dimension)
+    # Convert text into index
+
+    vectors = []
+    for text in raw_data:
+        vector = list(map(lambda x: word2idx[x], text.split()))
+        while len(vector) < len_sentence:
+            vector.append(0)
+        vector = vector[:len_sentence]
+        vectors.append(numpy.array(vector, dtype='float32'))
+
+    dataset_x = numpy.array(vectors)
+    def text2label(text):
+        if text == "positive":
+            print "p",
+            return 2
+        elif text== "negative":
+            print "n",
+            return 0
+        elif text == "neutral":
+            print "0",
+            return 1
+        else:
+            raise "Unexpected"
+
+    dataset_y = [ text2label(line[4]) for line in data]
+    return DataSet(dataset_x, dataset_y, idx2vect, dimension)
 
 def get_model(len_embedding, size_voca):
     print("Creating Model : ")
@@ -305,6 +351,24 @@ def run_english():
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
+def run_carsurve():
+    path_lable = "..\\input\\carsurvey.csv"
+    ## modelName,fault,summary,content,label,modelYear,date,buyAnother,manufacturer
+    len_embedding = 50
+
+    w2v_path = "..\\input\\english_word2vec_50_vectors.txt"
+
+    data = load_data_carsurvey(path_lable, w2v_path, len_embedding)
+
+    model = get_model_dirty(len_embedding, data, [3, 4, 5])
+
+    print("Training Model...")
+    model.fit(data.train_x, data.train_y,
+              batch_size=200,
+              nb_epoch=40,
+              validation_data=(data.test_x, data.test_y),
+              shuffle=True)
+
 def run_korean():
     len_embedding = 50
 
@@ -314,15 +378,16 @@ def run_korean():
 
     data = load_data_label(path_lable, path_article, w2v_path, len_embedding)
 
-    model = get_model_dirty(len_embedding, data, [3,4,5,6,7,8,9])
+    model = get_model_dirty(len_embedding, data, [3,4,5,6,7,8,9,10,11,12,13])
     #model = get_model(len_embedding, data.voca_size)
 
     print("Training Model...")
     model.fit(data.train_x, data.train_y,
-              batch_size=50,
-              nb_epoch=40,
+              batch_size=40,
+              nb_epoch=20,
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
-
-run_korean()
+if __name__ == "__main__":
+    run_korean()
+    #run_carsurve()
