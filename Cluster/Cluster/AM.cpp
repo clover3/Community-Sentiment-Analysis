@@ -42,24 +42,40 @@ void print_function_complete(const char* function_name)
 }
 
 // TODO optimize it
-int count_occurence(vector<Doc> docs, ItemSet itemSet)
+int count_occurence(const Docs& docs, ItemSet itemSet)
 {
-	int count = 0;
-	for (Doc doc : docs)
-	{
-		vector<bool> occur_check;
-		occur_check.resize(itemSet.size(), false);
-		for (int word : doc){
-			for (int i = 0; i < itemSet.size(); i++)
-			{
-				if (word == itemSet[i])
-					occur_check[i] = true;
-			}
-		}
-		if (all_true(occur_check))
-			count++;
+	// Count using inverted index;
+	vector<vector<int>> vector_occurrence;
+	for (int item : itemSet){
+		vector_occurrence.push_back(docs.get_occurence(item));
 	}
-	return count;
+
+	function<vector<int>(vector<int>, vector<int>)> vector_and = [](vector<int> v1, vector<int> v2)
+	{
+		vector<int> result;
+		// Two vector must be sorted
+		auto itr1 = v1.begin();
+		auto itr2 = v2.begin();
+		while (itr1 != v1.end() && itr2 != v2.end())
+		{
+			if (*itr1 < *itr2)
+				itr1++;
+			else if (*itr1 > *itr2)
+				itr2++;
+			else if (*itr1 == *itr2)
+			{
+				result.push_back(*itr1);
+				itr1++;
+				itr2++;
+			}
+			else
+				assert(false);
+		}
+		return result;
+	};
+
+	vector<int> common_occurence = foldLeft(vector_occurrence, vector_occurrence[0], vector_and);
+	return common_occurence.size();
 }
 
 
@@ -182,10 +198,31 @@ struct PMArgs{
 	int min_dup;
 };
 
+Docs::Docs(vector<Doc>& docs)
+{
+	for (int i = 0; i < docs.size(); i++)
+	{
+		push_back(docs[i]);
+		for (int word : docs[i])
+		{
+			if (invIndex.find(word) == invIndex.end())
+			{
+				invIndex[word] = vector<int>();
+			}
+			invIndex[word].push_back(i);
+		}
+	}
+
+	for (auto& key_value: invIndex)
+	{
+		sort(key_value.second);
+	}
+}
+
 FrequentSet prune_candidate_v(
 	vector<ItemSet>::iterator begin, 
 	vector<ItemSet>::iterator end,
-	const vector<Doc>& docs, 
+	const Docs& docs,
 	const FrequentSet& L_prev, 
 	int min_dup
 	)
@@ -216,7 +253,7 @@ FrequentSet prune_candidate_v(
 }
 
 
-FrequentSet prune_candidate_mt(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
 {
 	int nThread = std::thread::hardware_concurrency();
     printf("Working on %d threads\n", nThread);
@@ -251,7 +288,7 @@ FrequentSet prune_candidate_mt(const vector<Doc>& docs, const FrequentSet& C_k, 
 	return fs_all;
 }
 
-FrequentSet prune_candidate(const vector<Doc>& docs,const FrequentSet& C_k,const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
 {
 	// Make L2
 	vector<ItemSet> v(C_k.begin(), C_k.end());
@@ -384,6 +421,8 @@ void am(vector<Doc> docs, int max_word_id)
 	L.resize(10);
 	C.resize(10);
 
+	Docs indexDocs(docs);
+
 	cout << "Making\t L1..." ;
 
 	for (int i = 0; i < max_word_id; i++)
@@ -409,7 +448,7 @@ void am(vector<Doc> docs, int max_word_id)
 
 	cout << "Pruning L2...";
 	// Make L2
-	L[1] = prune_candidate_mt(docs, C[1], L[0], min_dup);
+	L[1] = prune_candidate_mt(indexDocs, C[1], L[0], min_dup);
 	cout << L[1].size() << " sets. " << elapsed() << "ms" << endl;
 	save_FrequentSet(genLpath(2), L[1]);
 	// Generate C3
@@ -422,9 +461,12 @@ void am(vector<Doc> docs, int max_word_id)
 		// Make L3
 
 		cout << "Pruning L" << i + 1 << "...";
-		L[i] = prune_candidate_mt(docs, C[i], L[i-1], min_dup);
+		L[i] = prune_candidate_mt(indexDocs, C[i], L[i - 1], min_dup);
 		cout << L[i].size() << " sets. " << elapsed() << "ms" << endl;
 		save_FrequentSet(genLpath(i+1), L[i]);
+
+		if (L[i].size() == 0)
+			break;
 	}
 
 	
@@ -438,8 +480,9 @@ vector<Doc> load_article(string path)
 	ifstream infile(path);
 	string line;
 	while (std::getline(infile, line))
-	//for (int i = 0; i < 10000; i++)
 	{
+	//for (int i = 0; i < 10000; i++)
+	//{
 	//	std::getline(infile, line);
 		
 		set<int> wordSet;
@@ -458,21 +501,21 @@ vector<Doc> load_article(string path)
 	return result;
 }
 
-int max_word_index(Corpus docs){
+int max_word_index(vector<Doc> docs){
 	int max = 5;
 	for (auto doc : docs){
 		for (int word : doc)
 		{
-			if (word > max)
+			if (word > max && word < 1000000 )
 				max = word;
 		}
 	}
-	printf("max :%d\n", max);
+	printf("max word :%d\n", max);
 	return max;
 }
 
 void am_main()
 {
-	vector<Doc> docs = load_article("bobae_as_index_sw");
+	vector<Doc> docs = load_article("input");
 	am(docs, max_word_index(docs));
 }

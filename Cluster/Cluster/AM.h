@@ -1,25 +1,36 @@
-#include <vector>
-#include <cassert>
-#include <set>
-#include <functional>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-
-#include <algorithm>
-#include <future>
-#ifdef WINVS
-#include <Windows.h>
-#endif
-using namespace std;
+#include "stdafx.h"
 
 //------------ Type Definition -----------//
 
 using Doc = vector <int>;
 using ItemSet = vector <int> ;
 using FrequentSet = set<ItemSet>;
-using Corpus = vector < Doc > ;
+class Docs : public vector < Doc >
+{
+public:
+	Docs(vector<Doc>& docs);
+	vector<int> get_occurence(int word) const{
+		if (invIndex.find(word) == invIndex.end())
+			return vector<int>();
+		else
+		{
+			vector<int> v = invIndex.find(word).operator*().second;
+			return v;
+		}
+	}
+private:
+	std::map<int, vector<int>> invIndex;
+};
 
+
+template <typename T>
+class Set2 : public set<T>
+{
+public:
+	bool has(T elem){
+		return (this->find(elem) != this->end());
+	}
+};
 // ----------------------------------------//
 
 vector<Doc> load_article(string path);
@@ -32,16 +43,8 @@ ItemSet join(const ItemSet set1, const ItemSet set2);
 
 
 FrequentSet generate_candidate(FrequentSet L_k);
-FrequentSet prune_candidate(const vector<Doc>& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup);
+FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup);
 
 void save_FrequentSet(string,const FrequentSet&);
 void print_function_complete(const char* function_name);
 
-template <typename T>
-class Set2 : public set<T>
-{
-public:
-	bool has(T elem){
-		return (this->find(elem) != this->end());
-	}
-};
