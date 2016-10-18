@@ -205,6 +205,9 @@
   <filesToClean>*.obj;*.cmd;*.build;*.json;*.dep</filesToClean>
  </Config>
  <Folder name="HelloD">
+  <Folder name="AssociationMining">
+   <File path="AssociationMining\AssociationMining.d" />
+  </Folder>
   <File path="main.d" />
   <File path="output.txt" />
  </Folder>
