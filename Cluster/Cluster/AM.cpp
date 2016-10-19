@@ -235,7 +235,8 @@ FrequentSet prune_candidate_v(
 	{
 		ItemSet candidate = *itr;
 		// TODO Prue by L_prev
-		if (all_of(subsets(candidate), contain(L_prev)))
+		bool fCountRequired = true; // (candidate.size() == 2 || all_of(subsets(candidate), contain(L_prev)));
+		if (fCountRequired)
 		{
 			nprune++;
 			//count occurence
@@ -479,11 +480,11 @@ vector<Doc> load_article(string path)
 
 	ifstream infile(path);
 	string line;
-	while (std::getline(infile, line))
-	{
-	//for (int i = 0; i < 10000; i++)
+	//while (std::getline(infile, line))
 	//{
-	//	std::getline(infile, line);
+	for (int i = 0; i < 300000; i++)
+	{
+		std::getline(infile, line);
 		
 		set<int> wordSet;
 		std::istringstream iss(line);
