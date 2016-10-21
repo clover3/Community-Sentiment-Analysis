@@ -44,15 +44,15 @@ public:
 	{
 		add_cnt = 0;
 	}
-	Centroid(int k) : vector<float>() 
+	Centroid(uint k) : vector<float>() 
 	{
-		for (int i = 0; i < k; i++)
+		for (uint i = 0; i < k; i++)
 			push_back(0);
 		begin_add();
 	}
 	void operator=(vector<float>& v)
 	{
-		for (int i = 0; i < size(); i++)
+		for (uint i = 0; i < size(); i++)
 			(*this)[i] = v[i];
 	}
 	void operator+=(Embedding& eb)
@@ -80,14 +80,14 @@ private:
 
 class Centroids : public vector<Centroid> {
 public:
-	Centroids(int k, size_t dim)
+	Centroids(uint k, size_t dim)
 	{
-		for (int i = 0; i < k; i++)
+		for (uint i = 0; i < k; i++)
 			this->push_back(Centroid(dim));
 	}
 };
 
-class Cluster
+class Clustering
 {
 public:
 	static Labels thresholdCluster(Embeddings* eb, float eps);
@@ -96,6 +96,8 @@ public:
 	static Labels KMeans(Embeddings* eb, Centroids centroids, float eps, int k);
 private:
 };
+
+using cluster = map < int, vector<int> > ;
 
 
 

@@ -49,10 +49,10 @@ namespace tests
 
 		ItemSet i4 = { 1, 2, 6 };
 
-		assert(!joinable(i1, i2));
-		assert(!joinable(i1, i3));
-		assert(!joinable(i3, i4));
-		assert(joinable(i1, i4));
+		assert(!ItemSet::joinable(i1, i2));
+		assert(!ItemSet::joinable(i1, i3));
+		assert(!ItemSet::joinable(i3, i4));
+		assert(ItemSet::joinable(i1, i4));
 
 		print_function_complete(__FUNCTION__);
 	}
@@ -68,7 +68,7 @@ namespace tests
 		ItemSet i4;
 		i4.push_back(1); i4.push_back(2); i4.push_back(6);
 
-		ItemSet newset = join(i1, i4);
+		ItemSet newset = ItemSet::join(i1, i4);
 
 		assert(newset.size() == 4);
 		assert(newset[0] == 1);
@@ -93,7 +93,7 @@ namespace tests
 	{
 		ItemSet i1 = { 1, 3, 5, 7 };
 
-		auto sets = subsets(i1);
+		auto sets = i1.subsets();
 
 		assert(sets.size() == 4);
 

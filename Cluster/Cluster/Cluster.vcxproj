@@ -146,12 +146,20 @@
     <ClCompile Include="AM.cpp" />
     <ClCompile Include="AMTest.cpp" />
     <ClCompile Include="Cluster.cpp" />
+    <ClCompile Include="Docs.cpp" />
+    <ClCompile Include="FrequentSet.cpp" />
+    <ClCompile Include="ItemSet.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="vectorComp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AM.h" />
     <ClInclude Include="Cluster.h" />
+    <ClInclude Include="Docs.h" />
+    <ClInclude Include="ItemSet.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="timeAux.h" />
+    <ClInclude Include="vectorComp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

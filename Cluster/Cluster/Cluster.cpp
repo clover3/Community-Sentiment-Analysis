@@ -160,7 +160,7 @@ Edges::Edges(Embeddings* eb, float eps, EDIST_METRIC dist_metric = euclidean)
 
 // cluster 
 
-Labels Cluster::OneStepCluster(Embeddings* eb, float eps)
+Labels Clustering::OneStepCluster(Embeddings* eb, float eps)
 {
 	printf("OneStepCluster ENTRY\n");
 
@@ -197,7 +197,7 @@ Labels Cluster::OneStepCluster(Embeddings* eb, float eps)
 
 
 
-Labels Cluster::KMeans(Embeddings* eb, float eps, int k )
+Labels Clustering::KMeans(Embeddings* eb, float eps, int k)
 {
 	printf("KMeans ENTRY\n");
 
@@ -217,7 +217,7 @@ Labels Cluster::KMeans(Embeddings* eb, float eps, int k )
 	return KMeans(eb, centroids, eps, k);
 }
 
-Labels Cluster::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
+Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 {
 	size_t dim = (*eb)[0].size();
 	size_t nNode = eb->size();
@@ -274,7 +274,7 @@ Labels Cluster::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 
 
 // cluster in chain manner
-Labels Cluster::thresholdCluster(Embeddings* eb, float eps)
+Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 {
 	printf("thresholdCluster ENTRY\n");
 	Edges edges(eb, eps);
@@ -322,6 +322,45 @@ Labels Cluster::thresholdCluster(Embeddings* eb, float eps)
 	return labels;
 }
 
+
+
+void save_cluster(string path, map<int, vector<int>>& group)
+{
+	ofstream fout2(path);
+	for (auto & v : group)
+	{
+		if (v.second.size() > 1)
+		{
+			fout2 << v.first << " ";
+			for (auto item : v.second)
+			{
+				fout2 << item << " ";
+			}
+			fout2 << endl;
+		}
+	}
+}
+
+map<int, int> loadCluster(string path)
+{
+	map<int, int> dict;
+	ifstream infile(path);
+	string line;
+	while (std::getline(infile, line))
+	{
+		set<int> wordSet;
+		istringstream iss(line);
+		int cluster;
+		iss >> cluster;
+		int item;
+		while (!iss.eof()){
+			iss >> item;
+			dict[item] = cluster;
+		}
+	}
+	return dict;
+}
+
 void display(Labels& label, Embeddings* eb)
 {
 	set<int> distinctLabel(label.begin(), label.end());
@@ -352,41 +391,7 @@ void display(Labels& label, Embeddings* eb)
 	printf("Number of label : %d\n", distinctLabel.size());
 	printf("Number of non single label : %d\n", nNonSingle);
 
-
-	ofstream fout2("cluster_index.txt");
-	for (auto & v : group)
-	{
-		if (v.second.size() > 1)
-		{
-			fout2 << v.first << " ";
-			for (auto item : v.second)
-			{
-				fout2 << item << " ";
-			}
-			fout2 << endl;
-		}
-	}
-
-}
-
-map<int, int> loadCluster(string path)
-{
-	map<int, int> dict;
-	ifstream infile(path);
-	string line;
-	while (std::getline(infile, line))
-	{
-		set<int> wordSet;
-		istringstream iss(line);
-		int cluster;
-		iss >> cluster;
-		int item;
-		while (!iss.eof()){
-			iss >> item;
-			dict[item] = cluster;
-		}
-	}
-	return dict;
+	save_cluster("cluster_index.txt", group);
 }
 
 void output(Labels& label, Embeddings* eb)
@@ -423,7 +428,7 @@ void cluster_embedding()
 	char path[] = "..\\..\\input\\korean_word2vec_wv_300.txt";
 	Embeddings* eb = loadEmbeddings(path);
 
-	Labels label = Cluster::KMeans(eb, 30, 1000);
+	Labels label = Clustering::KMeans(eb, 30, 1000);
 
 	display(label, eb);
 

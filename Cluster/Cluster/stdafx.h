@@ -1,4 +1,4 @@
-
+#pragma once
 #undef NDEBUG
 
 #include <algorithm>
@@ -16,9 +16,7 @@
 #include <string>
 #include <vector>
 
-#ifdef WINVS
-#include <Windows.h>
-#endif
+using uint = size_t;
 
 
 using namespace std;
@@ -67,3 +65,11 @@ void sort(vector<T>& v)
 }
 
 
+template <typename T>
+class Set2 : public set<T>
+{
+public:
+	bool has(T elem){
+		return (this->find(elem) != this->end());
+	}
+};
