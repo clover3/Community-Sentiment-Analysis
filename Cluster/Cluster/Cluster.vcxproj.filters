@@ -16,6 +16,15 @@
     <Filter Include="Test">
       <UniqueIdentifier>{b95239bf-f1eb-48c8-a4bd-7f98f3fdd084}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Clustering">
+      <UniqueIdentifier>{6656c9f8-dd5e-4eb5-bf30-1803d3d67a3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Association Pattern">
+      <UniqueIdentifier>{8264c05d-159b-4d3a-bba1-4d7de17d1fa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{7d6fd0d0-bd4f-48af-a354-6d8e77c29265}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -39,17 +48,14 @@
     <ClCompile Include="vectorComp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="word2idx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ItemSet.cpp">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AM.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Cluster.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -59,14 +65,28 @@
     <ClInclude Include="timeAux.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ItemSet.h">
+    <ClInclude Include="word2idx.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Cluster.h">
+      <Filter>Header Files\Clustering</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemSet.h">
+      <Filter>Header Files\Association Pattern</Filter>
+    </ClInclude>
+    <ClInclude Include="AM.h">
+      <Filter>Header Files\Association Pattern</Filter>
     </ClInclude>
     <ClInclude Include="Docs.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Association Pattern</Filter>
     </ClInclude>
     <ClInclude Include="FrequentSet.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Association Pattern</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Document.txt">
+      <Filter>Documentation</Filter>
+    </Text>
   </ItemGroup>
 </Project>

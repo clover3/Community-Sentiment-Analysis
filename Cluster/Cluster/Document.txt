@@ -1,0 +1,23 @@
+
+
+[모듈] Clustering
+
+ - 입력 :  
+    - Idx2word , 
+	- Embedding : 
+ - 출력 : 
+	- idx2cluster_id : cluster.txt : 0은 제거해야함. (Embedding 에 있는데 Voca에 없는 단어)
+
+[모듈] Frequent Pattern
+ 
+  - 입력 :
+	- tokened_corpus : ..\\..\\input\\bobae_tokened_corpus.txt
+	- idx2word : 
+	- idx2cluster_id : 
+  - 출력 : pattern_set
+
+[모듈] Dependency Mining
+
+ - 입력 : pattern_set, raw_corpus, tokened_corpus, idx2word
+ -
+

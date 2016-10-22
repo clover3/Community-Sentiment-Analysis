@@ -1,5 +1,6 @@
 #include "AM.h"
 #include "timeAux.h"
+#include "Cluster.h"
 
 
 void print_function_complete(const char* function_name)
@@ -164,15 +165,16 @@ string genLpath(int i)
 	return string("L") + to_string(i) + string(".txt");
 }
 
-void ExtractFrequent(Docs& docs, int max_word_id)
+void ExtractFrequent(Docs& docs)
 {
-	vector<int> counts;
-	counts.resize(max_word_id+1, 0);
+	Counter<int> counts;
 	int min_dup = 100;
 	
+
 	for (vector<int> doc : docs){
-		for (int word : doc){
-			counts[word] = counts[word] + 1;
+		for (int word : doc)
+		{
+			counts.add_count(word);
 		}
 	}
 
@@ -185,16 +187,20 @@ void ExtractFrequent(Docs& docs, int max_word_id)
 
 	cout << "Making\t L1..." ;
 
-	for (int i = 0; i < max_word_id; i++)
+	for (auto item : counts)
 	{
-		if (counts[i] >= min_dup)
+		int count = item.second;
+		int word = item.first;
+
+		if (count >= min_dup)
 		{
 			ItemSet items;
-			items.push_back(i);
+			items.push_back(word);
 			L[0].insert(items);
-			L1.insert(i);
+			L1.insert(word);
 		}
 	}
+
 	cout << L[0].size() << " sets. " << elapsed() << "ms" << endl;
 	L[0].save(genLpath(1));
 
@@ -228,23 +234,6 @@ void ExtractFrequent(Docs& docs, int max_word_id)
 		if (L[i].size() == 0)
 			break;
 	}
-}
-
-map<int, string> load_idx2word(string path)
-{
-	map<int, string> idx2word;
-	ifstream infile(path);
-	string line;
-	while (std::getline(infile, line))
-	{
-		std::istringstream iss(line);
-		int idx;
-		iss >> idx;
-		string word;
-		getline(iss, word);
-		idx2word[idx] = word.substr(1);
-	}
-	return idx2word;
 }
 
 bool ignore_pattern(ItemSet itemSet)
@@ -291,8 +280,8 @@ vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
 
 			// Pattern = item + remaining
 			// P(item|remaining) = Count(pattern) / Count(remaining)
-			int count_pattern = docs.count_occurence(pattern);
-			int count_remain = docs.count_occurence(remaining);
+			uint count_pattern = docs.count_occurence(pattern);
+			uint count_remain = docs.count_occurence(remaining);
 			float probability = float(count_pattern) / float(count_remain);
 			if (probability > 0.5 && !ignore_pattern(pattern))
 			{
@@ -377,8 +366,39 @@ set<int> FindOmission(Doc& doc, vector<Dependency>& dependencyList, Doc& predoc,
 // Doc 에서 생략을 찾자. 귀차느니까 바로 앞글을 dependency 라고 가정
 
 
+void apply_clustering(Docs& docs, map<int, int>& cluster)
+{
 
+	int cluster_prefix = 100000000;
+	if (docs.max_word_index() >= cluster_prefix)
+		cluster_prefix = docs.max_word_index() + 1;
 
+	
+	ofstream fout("clustering.log");
+	fout << cluster_prefix;
+	fout.close();
+
+	for (Doc &doc : docs)
+	{
+		for (int& word : doc)
+		{
+			if (cluster.find(word) != cluster.end())
+			{
+				word = cluster[word] + cluster_prefix;
+			}
+		}
+	}
+}
+
+void find_frequent_pattern()
+{
+	Docs docs("input");
+	
+	map<int, int> cluster = loadCluster("cluster.txt");
+	apply_clustering(docs, cluster);
+
+	ExtractFrequent(docs);
+}
 
 
 void am_main()

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "word2idx.h"
 
 template<typename T>
 void for_enum(T& container, std::function<void(int, typename T::value_type&)> op)
@@ -111,8 +112,8 @@ private:
 	int nSize;
 };
 
-int find_min(const vector<float>& source, vector<Centroid>& candidates);
+int find_min(const vector<float>& source, const vector<Centroid>& candidates);
 void cluster_embedding();
 
 map<int, int> loadCluster(string path);
-
+void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels);

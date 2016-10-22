@@ -3,8 +3,9 @@
 Embeddings* loadEmbeddings(char* path)
 {
 	Embeddings *ptr = new Embeddings;
-	ifstream fin(path);
-	if (!fin.is_open())
+	FILE* fp;
+	fopen_s(&fp, path, "r");
+	if (!fp)
 	{
 		cout << "file open failed" << endl;
 		exit(0);
@@ -12,22 +13,32 @@ Embeddings* loadEmbeddings(char* path)
 
 	int nEntry, nDim;
 	string str;
-	fin >> nEntry >> nDim;
+	fscanf_s(fp, "%d %d", &nEntry, &nDim);
+
 	//nEntry = 10000;
 	printf("Entry :%d \nDimension : %d\n", nEntry, nDim);
+	ptr->resize(nEntry);
 
+	cout << "Loading embedding..";
+	int cnt = 0;
+	char buf[4000];
 	for (int i = 0; i < nEntry; i++)
 	{
-		Embedding v;
-		fin >> v.text;
+		Embedding& v = (*ptr)[i];
+		v.resize(nDim);
+		fscanf_s(fp, "%s", buf);
+		v.text = buf;
+
 		for (int j = 0; j < nDim; j++)
 		{
 			float f;
-			fin >> f;
-			v.push_back(f);
+			fscanf_s(fp, "%f ", &f);
+			v[j] = f;
 		}
-		ptr->push_back(v);
 	}
+	fclose(fp);
+
+	cout << " done " << endl;
 	return ptr;
 }
 
@@ -43,7 +54,7 @@ float dist_euclidean(const vector<float> &e1, const  vector<float> &e2)
 	return acc;
 }
 
-int find_min(const vector<float>& source, vector<Centroid>& candidates)
+int find_min(const vector<float>& source, const vector<Centroid>& candidates)
 {
 	int index_min = 0;
 	float min_dist = dist_euclidean(source, candidates[0]);
@@ -206,8 +217,6 @@ Labels Clustering::KMeans(Embeddings* eb, float eps, int k)
 
 	Centroids centroids(k, dim);
 	printf("running clustering...\n");
-
-
 	
 	//TODO Init centorids
 	for (int i = 0; i < k; i++){
@@ -227,15 +236,26 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 
 
 	bool retry = true;
+	int cnt = 0;
 	while (retry)
 	{
+		cnt++;
 		cout << ".";
 
 		retry = false;
 		// assign each points to nearest label
-		for (int i = 0; i < eb->size(); i++)
+
+		vector<future<int>> index_min_f(nNode);
+		for (int i = 0; i < nNode; i++)
 		{
-			int index_min = find_min((*eb)[i],centroids);
+			index_min_f[i] = async(launch::async, find_min, cref((*eb)[i]), cref(centroids));
+			//scanf_s("%*c");
+		}
+
+		for (int i = 0; i < nNode; i++)
+		{
+			int index_min = index_min_f[i].get();
+
 			if (index_min != labels[i])
 				retry = true;
 			labels[i] = index_min;
@@ -270,6 +290,71 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 	return labels;
 }
 
+/*
+Labels Clustering::KMeansV(Embeddings* eb, float eps, int k)
+{
+	size_t dim = (*eb)[0].size();
+	size_t nNode = eb->size();
+	Labels labels(nNode);
+
+	cout << "Iterating ";
+
+	vector<int> centers(k);
+	for (int i = 0; i < k; i++)
+		centers[i] = i;
+
+	
+
+	bool retry = true;
+	int cnt = 0;
+	while (retry && cnt < 10)
+	{
+		cnt++;
+		cout << ".";
+
+		retry = false;
+		// assign each points to nearest label
+
+		for (int i = 0; i < nNode; i++)
+		{
+
+			auto p = find_min((*eb)[i], centers);
+			int index_min = p.first;
+			float dist = p.second;
+
+			if (index_min != labels[i])
+				retry = true;
+			labels[i] = index_min;
+		}
+
+		// re-evaluate the centers;
+		Centroids new_centroids(k, dim);
+		for (int i = 0; i < eb->size(); i++)
+		{
+			new_centroids[labels[i]] += (*eb)[i];
+		}
+
+		for (Centroid& centroid : new_centroids)
+		{
+			centroid.comlete_add();
+		}
+
+		centroids = new_centroids;
+	}
+	cout << endl;
+
+
+	for (int i = 0; i < eb->size(); i++)
+	{
+		float dist = dist_euclidean((*eb)[i], centroids[labels[i]]);
+		if (dist > eps*eps)
+		{
+			labels[i] = i;
+		}
+	}
+
+	return labels;
+}*/
 
 
 
@@ -324,23 +409,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 
 
 
-void save_cluster(string path, map<int, vector<int>>& group)
-{
-	ofstream fout2(path);
-	for (auto & v : group)
-	{
-		if (v.second.size() > 1)
-		{
-			fout2 << v.first << " ";
-			for (auto item : v.second)
-			{
-				fout2 << item << " ";
-			}
-			fout2 << endl;
-		}
-	}
-}
-
+// voca_id -> cluster_id
 map<int, int> loadCluster(string path)
 {
 	map<int, int> dict;
@@ -348,8 +417,7 @@ map<int, int> loadCluster(string path)
 	string line;
 	while (std::getline(infile, line))
 	{
-		set<int> wordSet;
-		istringstream iss(line);
+		istringstream iss(trim(line));
 		int cluster;
 		iss >> cluster;
 		int item;
@@ -360,6 +428,7 @@ map<int, int> loadCluster(string path)
 	}
 	return dict;
 }
+
 
 void display(Labels& label, Embeddings* eb)
 {
@@ -373,6 +442,8 @@ void display(Labels& label, Embeddings* eb)
 	}
 
 	int nNonSingle = 0;
+
+
 	ofstream fout("cluster_text.txt");
 	for (auto & v : group)
 	{
@@ -391,7 +462,6 @@ void display(Labels& label, Embeddings* eb)
 	printf("Number of label : %d\n", distinctLabel.size());
 	printf("Number of non single label : %d\n", nNonSingle);
 
-	save_cluster("cluster_index.txt", group);
 }
 
 void output(Labels& label, Embeddings* eb)
@@ -422,14 +492,47 @@ void output(Labels& label, Embeddings* eb)
 	fout.close();
 }
 
+void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels)
+{
+	map<int, vector<int>> group;
+
+	for (unsigned int i = 0; i < eb.size(); i++)
+	{
+		int cluster_id = labels[i];
+		int word_id = word2idx[eb[i].text];
+		group[cluster_id].push_back(word_id);
+	}
+
+	ofstream fout(path);
+	for (auto & v : group)
+	{
+		if (v.second.size() > 1)
+		{
+			fout << v.first;
+			for (auto item : v.second)
+			{
+				fout << " " << item;
+			}
+			fout << endl;
+		}
+	}
+	fout.close();
+}
+
+
 void cluster_embedding()
 {
 	printf("Runner ENTRY\n");
-	char path[] = "..\\..\\input\\korean_word2vec_wv_300.txt";
+	char path[] = "..\\..\\input\\korean_word2vec_wv_300_euckr.txt";
 	Embeddings* eb = loadEmbeddings(path);
 
-	Labels label = Clustering::KMeans(eb, 30, 1000);
-
+	Labels label = Clustering::KMeans(eb, 30, 300);
+	output(label, eb);
+	map<string, int> word2idx = reverse_idx2word(load_idx2word("idx2word"));
+	
+	// Convert embedding index to voca index
+	save_cluster("cluster.txt", *eb, word2idx, label);
+	
 	display(label, eb);
 
 	delete eb;

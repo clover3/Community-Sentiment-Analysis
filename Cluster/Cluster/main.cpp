@@ -6,7 +6,7 @@ extern void am_main();
 int main()
 {
 	//all_test();
-	//cluster_embedding();
-	am_main();
+	cluster_embedding();
+	//am_main();
 	return 0;
 }

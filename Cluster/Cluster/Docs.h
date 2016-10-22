@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.h"
+#include "word2idx.h"
 #include "ItemSet.h"
 
 using Doc = vector <int>;
@@ -11,6 +12,7 @@ class Docs : public vector < Doc >
 public:
 	Docs(string path);
 	Docs(vector<Doc>& docs);
+	Docs(Idx2Word& idx2word, string path);
 
 	size_t docsize() const;
 
