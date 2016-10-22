@@ -1,6 +1,16 @@
 #pragma once
 #include "AM.h"
 
+void print_doc(Doc& doc, map<int,string>& idx2word)
+{
+	for (int word : doc)
+	{
+		cout << idx2word[word] << " ";
+	}
+	cout << endl;
+}
+
+
 void Docs::init(vector<Doc>& docs)
 {
 	for (int i = 0; i < docs.size(); i++)
@@ -35,7 +45,6 @@ Docs::Docs(string path)
 	string line;
 	while (std::getline(infile, line))
 	{
-		std::getline(infile, line);
 
 		set<int> wordSet;
 		std::istringstream iss(line);
@@ -96,6 +105,11 @@ vector<int> Docs::get_occurence(int word) const{
 	}
 }
 
+
+uint Docs::count_occurence_single(int item) const
+{
+	return get_occurence(item).size();
+}
 // TODO optimize it
 uint Docs::count_occurence(ItemSet itemSet) const
 {

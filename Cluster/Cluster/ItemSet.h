@@ -16,8 +16,11 @@ public:
 	ItemSet(initializer_list<int> il) : vector(il) {};
 
 	using vector::vector;
+
 	vector<ItemSet> subsets() const;
+
 	static bool joinable(ItemSet set1, ItemSet set2);
 	static ItemSet join(const ItemSet set1, const ItemSet set2);
-
+	static bool comp(ItemSet& i1, ItemSet& i2);
+	ItemSet operator-(int item);
 };

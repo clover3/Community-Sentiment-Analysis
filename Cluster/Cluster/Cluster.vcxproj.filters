@@ -65,5 +65,8 @@
     <ClInclude Include="Docs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FrequentSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

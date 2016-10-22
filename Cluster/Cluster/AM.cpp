@@ -1,12 +1,11 @@
 #include "AM.h"
 #include "timeAux.h"
 
+
 void print_function_complete(const char* function_name)
 {
 	printf("%s Completed\n", function_name);
 }
-
-
 
 FrequentSet generate_candidate(FrequentSet L_k)
 {
@@ -124,22 +123,9 @@ FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2
 	return FS;
 }
 
-bool comp(ItemSet& i1, ItemSet& i2)
-{
-	if (i1.size() != i2.size())
-		return i1.size() < i2.size();
-
-	for (int i = 0; i < i1.size(); i++)
-	{
-		if (i1[i] != i2[i])
-			return i1[i] < i2[i];
-	}
-	return false;
-}
-
 void sort(vector<ItemSet>& v)
 {
-	sort(v.begin(), v.end(), comp);
+	sort(v.begin(), v.end(), ItemSet::comp);
 }
 
 FrequentSet build_C2(FrequentSet L1)
@@ -244,8 +230,160 @@ void ExtractFrequent(Docs& docs, int max_word_id)
 	}
 }
 
+map<int, string> load_idx2word(string path)
+{
+	map<int, string> idx2word;
+	ifstream infile(path);
+	string line;
+	while (std::getline(infile, line))
+	{
+		std::istringstream iss(line);
+		int idx;
+		iss >> idx;
+		string word;
+		getline(iss, word);
+		idx2word[idx] = word.substr(1);
+	}
+	return idx2word;
+}
+
+bool ignore_pattern(ItemSet itemSet)
+{
+	for (int item : itemSet)
+	{
+		if (item == 5 || item == 491 || item == 72738 || item == 40405 || item == 248 || item == 31509)
+			return true;
+	}
+	return false;
+}
+
+int find_match(int i, vector<string>& rawdoc, Doc doc, Idx2Word& idx2word)
+{
+	int run = 0;
+	for (int j = i; run < 1000; j++)
+	{
+		run++;
+		int cnt = 0;
+		for (int word : doc)
+		{
+			if (rawdoc[j].find(idx2word[word]) != string::npos)
+			{
+				cnt++;
+			}
+		}
+		if (float(cnt) >= float(doc.size()) * 0.5)
+			return j;
+	}
+	return -1;
+}
+
+vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
+{
+	vector<Dependency> dependsList;
+
+	cout << "Calculating Dependencies" << endl;
+	for (ItemSet pattern : fs)
+	{
+		//  pick one item.
+		for (int item : pattern)
+		{
+			ItemSet remaining = pattern - item;
+
+			// Pattern = item + remaining
+			// P(item|remaining) = Count(pattern) / Count(remaining)
+			int count_pattern = docs.count_occurence(pattern);
+			int count_remain = docs.count_occurence(remaining);
+			float probability = float(count_pattern) / float(count_remain);
+			if (probability > 0.5 && !ignore_pattern(pattern))
+			{
+				Dependency dep(item, remaining, probability);
+				dependsList.push_back(dep);
+			}
+		}
+	}
+	return dependsList;
+}
+
+
+
+bool missing(Doc& doc, int token)
+{
+	for (auto item : doc)
+	{
+		if (item == token)
+			return false;
+	}
+	return true;
+}
+
+void PatternToDependency(Docs& docs)
+{
+	FrequentSet fs("L5.txt");
+	map<int, string> idx2word = load_idx2word("idx2word");
+
+	vector<Dependency> dependsList = FS2Dependency(docs, fs);
+	//vector<Dependency> dependsList = FS2Dependency(docs, fs);
+
+	cout << "Loading raw sentence" << endl;
+	ifstream fin("..\\..\\input\\bobae_raw_sentence.txt");
+	vector<string> rawdoc;
+	string temp;
+	while ( getline(fin, temp) )
+	{ 
+		rawdoc.push_back(temp);
+	}
+
+
+	cout << "Now resolve omission" << endl;
+	for (uint i = 1; i < docs.size() ;i++)
+	{
+		set<int> ommision = FindOmission(docs[i], dependsList, docs[i - 1], idx2word);
+		if (ommision.size() > 0)
+		{
+			cout << "--------------------------------------" << endl;
+			cout << "Index = " << i << endl;
+			cout << "prev : " << endl;
+			print_doc(docs[i - 1], idx2word);
+			cout << "this : " << endl;
+			print_doc(docs[i], idx2word);
+			cout << "This sentence was missing : ";
+			for (int token : ommision)
+				cout << idx2word[token] << " ";
+			cout << endl;
+			scanf_s("%*c");
+		}
+	}
+}
+
+set<int> FindOmission(Doc& doc, vector<Dependency>& dependencyList, Doc& predoc, map<int, string>& idx2word)
+{
+	set<int> omission;
+	Set2<int> predoc_set(predoc.begin(), predoc.end());
+	//Set2<int> doc_set(doc.begin(), doc.end());
+	for (Dependency dependency : dependencyList)
+	{
+		sort(doc);
+		if (contain(doc, dependency.dependents))
+		{
+			if (missing(doc, dependency.target) && predoc_set.has(dependency.target))
+			{
+				omission.insert(dependency.target);
+			}
+		}
+	}
+	return omission;
+}
+
+// Doc 에서 생략을 찾자. 귀차느니까 바로 앞글을 dependency 라고 가정
+
+
+
+
+
+
 void am_main()
 {
 	Docs docs("input");
-	ExtractFrequent(docs, docs.max_word_index());
+	//ExtractFrequent(docs, docs.max_word_index());
+	PatternToDependency(docs);
 }

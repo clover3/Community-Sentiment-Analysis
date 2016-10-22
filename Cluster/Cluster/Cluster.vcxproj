@@ -156,6 +156,7 @@
     <ClInclude Include="AM.h" />
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="Docs.h" />
+    <ClInclude Include="FrequentSet.h" />
     <ClInclude Include="ItemSet.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="timeAux.h" />

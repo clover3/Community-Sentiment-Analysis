@@ -7,18 +7,9 @@
 #include "ItemSet.h"
 #include "vectorComp.h"
 #include "Docs.h"
+#include "FrequentSet.h"
 
-// --------- class Definition --------------//
-class FrequentSet : public set < ItemSet >
-{
-
-public:
-	using set::set;
-	void save(string path) const;
-	uint item_size() const;
-};
-
-
+using Idx2Word = map < int, string >;
 
 // ----------------------------------------//
 
@@ -31,3 +22,27 @@ FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const Freq
 
 void print_function_complete(const char* function_name);
 
+
+
+class Dependency
+{
+public:
+	int target;
+	vector<int> dependents;
+	float probability;
+	Dependency(int t, vector<int> ds, float p) : target(t), dependents(ds), probability(p)
+	{
+
+	}
+	void print(Idx2Word& idx2word)
+	{
+		cout << "P(" << idx2word[target] << " | ";
+		for (auto ritem : dependents)
+			cout << idx2word[ritem] << ", ";
+		cout << ") = " << probability << endl;
+	}
+private:
+
+};
+
+set<int> FindOmission(Doc& doc, vector<Dependency>& dependencyList, Doc& predoc, map<int, string>& idx2word);

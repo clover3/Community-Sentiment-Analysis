@@ -1,4 +1,22 @@
 #include "AM.h"
+#include "FrequentSet.h"
+
+FrequentSet::FrequentSet(string path)
+{
+	ifstream infile(path);
+	string line;
+	while (std::getline(infile, line))
+	{
+		ItemSet itemSet;
+		std::istringstream iss(trim(line));
+		int token;
+		while (!iss.eof()){
+			iss >> token;
+			itemSet.push_back(token);
+		}
+		this->insert(itemSet);
+	}
+}
 
 
 void FrequentSet::save(string path) const
@@ -24,3 +42,4 @@ function<bool(ItemSet&)> contain(const FrequentSet& fs)
 		return (fs.find(itemSet) != fs.end());
 	};
 }
+

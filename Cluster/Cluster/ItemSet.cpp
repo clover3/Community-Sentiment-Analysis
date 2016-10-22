@@ -62,3 +62,29 @@ vector<ItemSet> ItemSet::subsets() const
 	}
 	return result;
 }
+
+
+bool ItemSet::comp(ItemSet& i1, ItemSet& i2)
+{
+	if (i1.size() != i2.size())
+		return i1.size() < i2.size();
+
+	for (int i = 0; i < i1.size(); i++)
+	{
+		if (i1[i] != i2[i])
+			return i1[i] < i2[i];
+	}
+	return false;
+}
+
+
+ItemSet ItemSet::operator-(int target)
+{
+	ItemSet result;
+	for (int item : *this)
+	{
+		if (item != target)
+			result.push_back(item);
+	}
+	return result;
+}
