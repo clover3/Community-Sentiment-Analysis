@@ -1,6 +1,8 @@
 #include "AM.h"
+
 #include <cassert>
 
+extern function<vector<int>(vector<int>, vector<int>)> vector_except;
 
 namespace tests
 {
@@ -24,7 +26,6 @@ namespace tests
 
 	bool returnfalse(int dummy)
 	{
-		printf("check");
 		return false;
 	}
 
@@ -108,6 +109,21 @@ namespace tests
 		print_function_complete(__FUNCTION__);
 	}
 
+
+	void test_vector_except()
+	{
+		vector<int> v1 = { 1, 3, 4, 5, 7, 9 };
+		vector<int> v2 = { 4, 5, 6 };
+		vector<int> vr = vector_except(v1, v2);
+
+		assert(vr[0] == 1);
+		assert(vr[1] == 3);
+		assert(vr[2] == 7);
+		assert(vr[3] == 9);
+		print_function_complete(__FUNCTION__);
+	}
+
+
 	void all_test()
 	{
 		test_all_true();
@@ -116,8 +132,10 @@ namespace tests
 		test_joinable();
 		test_subsets();
 		test_all_of();
+		test_vector_except();
 		print_function_complete(__FUNCTION__);
 	}
+
 }
 
 void all_test()

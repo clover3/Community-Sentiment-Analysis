@@ -76,6 +76,9 @@ public:
 	Set2(_Iter _First, _Iter _Last): set(_First, _Last)
 	{	
 	}
+	Set2(vector<T>& v) : set(v.begin(), v.end())
+	{
+	}
 	bool has(T elem){
 		return (this->find(elem) != this->end());
 	}
@@ -98,4 +101,10 @@ static inline std::string &rtrim(std::string &s) {
 // trim from both ends
 static inline std::string &trim(std::string &s) {
 	return ltrim(rtrim(s));
+}
+
+template <typename T>
+void vector_add(vector<T>& first, vector<T>& second)
+{
+	first.insert(first.end(), second.begin(), second.end());
 }

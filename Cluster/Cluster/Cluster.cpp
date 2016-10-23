@@ -519,6 +519,12 @@ void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& label
 	fout.close();
 }
 
+/*
+parameter :
+
+50 : 10 -> sucks
+300 : 30 -> two broad??
+*/
 
 void cluster_embedding()
 {
@@ -526,7 +532,7 @@ void cluster_embedding()
 	char path[] = "..\\..\\input\\korean_word2vec_wv_300_euckr.txt";
 	Embeddings* eb = loadEmbeddings(path);
 
-	Labels label = Clustering::KMeans(eb, 30, 300);
+	Labels label = Clustering::KMeans(eb, 20, 300);
 	output(label, eb);
 	map<string, int> word2idx = reverse_idx2word(load_idx2word("idx2word"));
 	

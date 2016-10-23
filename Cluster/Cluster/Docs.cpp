@@ -110,6 +110,65 @@ uint Docs::count_occurence_single(int item) const
 {
 	return get_occurence(item).size();
 }
+
+
+function<vector<int>(vector<int>, vector<int>)> vector_and = [](vector<int> v1, vector<int> v2)
+{
+	vector<int> result;
+	// Two vector must be sorted
+	auto itr1 = v1.begin();
+	auto itr2 = v2.begin();
+	while (itr1 != v1.end() && itr2 != v2.end())
+	{
+		if (*itr1 < *itr2)
+			itr1++;
+		else if (*itr1 > *itr2)
+			itr2++;
+		else if (*itr1 == *itr2)
+		{
+			result.push_back(*itr1);
+			itr1++;
+			itr2++;
+		}
+		else
+			assert(false);
+	}
+	return result;
+};
+
+int fun_global = 10;
+
+function<vector<int>(vector<int>, vector<int>)> vector_except = [](vector<int> v1, vector<int> v2)
+{
+	vector<int> result;
+	// Two vector must be sorted
+	auto itr1 = v1.begin();
+	auto itr2 = v2.begin();
+	while (itr1 != v1.end() && itr2 != v2.end())
+	{
+		if (*itr1 < *itr2)
+		{
+			result.push_back(*itr1);
+			itr1++;
+		}
+		else if (*itr1 > *itr2)
+			itr2++;
+		else if (*itr1 == *itr2)
+		{
+			itr1++;
+		}
+		else
+			assert(false);
+	}
+
+	while (itr1 != v1.end())
+	{
+		result.push_back(*itr1);
+		itr1++;
+	}
+	return result;
+};
+
 // TODO optimize it
 uint Docs::count_occurence(ItemSet itemSet) const
 {
@@ -119,30 +178,23 @@ uint Docs::count_occurence(ItemSet itemSet) const
 		vector_occurrence.push_back(this->get_occurence(item));
 	}
 
-	function<vector<int>(vector<int>, vector<int>)> vector_and = [](vector<int> v1, vector<int> v2)
-	{
-		vector<int> result;
-		// Two vector must be sorted
-		auto itr1 = v1.begin();
-		auto itr2 = v2.begin();
-		while (itr1 != v1.end() && itr2 != v2.end())
-		{
-			if (*itr1 < *itr2)
-				itr1++;
-			else if (*itr1 > *itr2)
-				itr2++;
-			else if (*itr1 == *itr2)
-			{
-				result.push_back(*itr1);
-				itr1++;
-				itr2++;
-			}
-			else
-				assert(false);
-		}
-		return result;
-	};
-
 	vector<int> common_occurence = foldLeft(vector_occurrence, vector_occurrence[0], vector_and);
 	return common_occurence.size();
 }
+
+uint Docs::count_occurence_except(ItemSet itemSet, int except) const
+{
+	// Count using inverted index;
+	vector<vector<int>> vector_occurrence;
+	for (int item : itemSet){
+		vector_occurrence.push_back(this->get_occurence(item));
+	}
+
+	vector<int> common_occurence = foldLeft(vector_occurrence, vector_occurrence[0], vector_and);
+	vector<int> except_occurence = get_occurence(except);
+
+	vector<int> remain_occurence = vector_except(common_occurence, except_occurence);
+
+	return remain_occurence.size();
+}
+

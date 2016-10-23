@@ -19,6 +19,7 @@ public:
 	vector<int> get_occurence(int word) const;
 	uint count_occurence_single(int item) const;
 	uint count_occurence(ItemSet itemSet) const;
+	uint count_occurence_except(ItemSet itemSet, int except) const;
 	int max_word_index() const;
 
 	void filter_not_in(Set2<int> interested_word);
@@ -26,4 +27,3 @@ private:
 	void init(vector<Doc>& docs);
 	std::map<int, vector<int>> invIndex;
 };
- 

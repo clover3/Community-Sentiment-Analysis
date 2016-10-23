@@ -55,4 +55,14 @@ private:
 
 };
 
-set<int> FindOmission(Doc& doc, vector<Dependency>& dependencyList, Doc& predoc, map<int, string>& idx2word);
+
+void find_frequent_pattern();
+
+
+
+Set2<int> FindOmission(
+	Doc& doc,
+	Doc& predoc,
+	vector<Dependency>& dependencyList,
+	map<int, string>& idx2word,
+	map<int, int>& cluster);
