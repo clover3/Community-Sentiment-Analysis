@@ -4,7 +4,11 @@ Embeddings* loadEmbeddings(char* path)
 {
 	Embeddings *ptr = new Embeddings;
 	FILE* fp;
+#ifdef WINVS
 	fopen_s(&fp, path, "r");
+#else
+    fp = fopen(path, "r");
+#endif
 	if (!fp)
 	{
 		cout << "file open failed" << endl;

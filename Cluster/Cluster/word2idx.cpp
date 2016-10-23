@@ -18,7 +18,7 @@ map<int, string> load_idx2word(string path)
 	return idx2word;
 }
 
-map<string, int > reverse_idx2word(Idx2Word& idx2word)
+map<string, int > reverse_idx2word(const Idx2Word& idx2word)
 {
 	map<string, int> rev;
 

@@ -17,8 +17,15 @@
 #include <vector>
 #include <cctype>
 #include <locale>
+#include <stdio.h>
 
+#ifdef WINVS
 using uint = size_t;
+#else
+#define uint size_t
+#define scanf_s scanf
+#define fscanf_s fscanf
+#endif
 
 
 using namespace std;
@@ -71,12 +78,12 @@ template <typename T>
 class Set2 : public set<T>
 {
 public:
-	Set2() : set(){}
+	Set2() : set<T>(){}
 	template<class _Iter>
-	Set2(_Iter _First, _Iter _Last): set(_First, _Last)
+	Set2(_Iter _First, _Iter _Last): set<T>(_First, _Last)
 	{	
 	}
-	Set2(vector<T>& v) : set(v.begin(), v.end())
+	Set2(vector<T>& v) : set<T>(v.begin(), v.end())
 	{
 	}
 	bool has(T elem){
@@ -104,7 +111,7 @@ static inline std::string &trim(std::string &s) {
 }
 
 template <typename T>
-void vector_add(vector<T>& first, vector<T>& second)
+void vector_add(vector<T>& first, const vector<T>& second)
 {
 	first.insert(first.end(), second.begin(), second.end());
 }
