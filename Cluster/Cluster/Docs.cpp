@@ -32,6 +32,27 @@ void Docs::init(vector<Doc>& docs)
 	}
 }
 
+void Docs::rebuild_index()
+{
+	invIndex.clear();
+	for (int i = 0; i < size(); i++)
+	{
+		for (int word : (*this)[i])
+		{
+			if (invIndex.find(word) == invIndex.end())
+			{
+				invIndex[word] = vector<int>();
+			}
+			invIndex[word].push_back(i);
+		}
+	}
+
+	for (auto& key_value : invIndex)
+	{
+		sort(key_value.second);
+	}
+}
+
 Docs::Docs(vector<Doc>& docs)
 {
 	init(docs);

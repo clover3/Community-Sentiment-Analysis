@@ -404,13 +404,14 @@ void apply_clustering(Docs& docs, map<int, int>& cluster)
 			}
 		}
 	}
+	docs.rebuild_index();
 }
 
 void find_frequent_pattern()
 {
 	Docs docs("index_corpus.index");
 	
-	map<int, int> cluster = loadCluster("cluster.txt");
+	map<int, int> cluster = loadCluster("cluster_1.txt");
 	apply_clustering(docs, cluster);
 
 	ExtractFrequent(docs);
@@ -458,3 +459,4 @@ void resolve_ommission()
 		}
 	}
 }
+
