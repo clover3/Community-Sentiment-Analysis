@@ -1,6 +1,6 @@
 CC=gcc
 CXX=g++
-RM=rm -f
+RM=rm
 CFLAGS=-std=c++11 -Wall -Wsign-compare -O3 
 CPPFLAGS=-g $(shell root-config --cflags)
 LDFLAGS=-g $(shell root-config --ldflags)

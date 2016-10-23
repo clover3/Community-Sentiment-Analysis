@@ -533,7 +533,11 @@ parameter :
 void cluster_embedding()
 {
 	printf("Runner ENTRY\n");
+#ifdef WINVS
 	char path[] = "..\\..\\input\\korean_word2vec_wv_300_euckr.txt";
+#else
+	char path[] = "../../input/korean_word2vec_wv_300_euckr.txt";
+#endif
 	Embeddings* eb = loadEmbeddings(path);
 
 	Labels label = Clustering::KMeans(eb, 20, 300);
