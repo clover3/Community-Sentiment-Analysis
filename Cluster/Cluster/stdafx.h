@@ -63,7 +63,7 @@ std::vector<U> mapf(const std::vector<T>& data, const std::function<U(T)> mapper
 template<class T> 
 void sort(vector<T>& v)
 {	
-	sort(v.begin(), v.end(), less<>());
+	sort(v.begin(), v.end(), less<T>());
 }
 
 
