@@ -1,4 +1,5 @@
 #include "Cluster.h"
+#include "ThreadPool.h"
 
 Embeddings* loadEmbeddings(char* path)
 {
@@ -238,6 +239,8 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 
 	cout << "Iterating ";
 
+    int nThread = std::thread::hardware_concurrency();
+    ThreadPool pool(nThread);
 
 	bool retry = true;
 	int cnt = 0;
@@ -250,15 +253,15 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 		// assign each points to nearest label
 
 		vector<future<int>> index_min_f(nNode);
+		vector<int> index_min_v(nNode);
 		for (int i = 0; i < nNode; i++)
 		{
-			index_min_f[i] = async(launch::async, find_min, cref((*eb)[i]), cref(centroids));
-			//scanf_s("%*c");
+			index_min_f[i] = pool.enqueue(find_min, cref((*eb)[i]), cref(centroids));
 		}
 
 		for (int i = 0; i < nNode; i++)
 		{
-			int index_min = index_min_f[i].get();
+            int index_min = index_min_f[i].get();
 
 			if (index_min != labels[i])
 				retry = true;
@@ -540,7 +543,14 @@ void cluster_embedding()
 #endif
 	Embeddings* eb = loadEmbeddings(path);
 
-	Labels label = Clustering::KMeans(eb, 20, 300);
+    int k = 20;
+    int eps = 300;
+    ifstream fin("parameter.txt");
+    if( fin.good() )
+        fin>> k >> eps;
+    cout<< "Eps=" << eps << " k = " << k <<endl;
+
+	Labels label = Clustering::KMeans(eb, eps, k); 
 	output(label, eb);
 	map<string, int> word2idx = reverse_idx2word(load_idx2word("idx2word"));
 	
