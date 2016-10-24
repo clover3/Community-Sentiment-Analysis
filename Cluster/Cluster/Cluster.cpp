@@ -568,7 +568,7 @@ void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster)
 	for (auto item : cluster)
 	{
 		int voca = item.first;
-		int c_id = item.second;
+		int c_id = item.second + 100000000;
 		idx2word[c_id] = idx2word[voca];
 	}
 }

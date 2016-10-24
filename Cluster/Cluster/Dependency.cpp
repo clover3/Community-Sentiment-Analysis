@@ -35,11 +35,20 @@ Idx2Word* g_idx2word;
 
 vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
 {
-	vector<Dependency> dependsList;
 
 	cout << "Calculating Dependencies" << endl;
+	vector<ItemSet> patterns;
+	patterns.reserve(fs.size());
+
 	for (ItemSet pattern : fs)
 	{
+		patterns.push_back(pattern);
+	}
+
+	function<vector<Dependency>(ItemSet)> check = 
+		[docs](ItemSet pattern)
+	{
+		vector<Dependency> dependsList;
 		//  pick one item.
 		for (int item : pattern)
 		{
@@ -58,11 +67,18 @@ vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
 			{
 				Dependency dep(item, remaining, probability);
 				dependsList.push_back(dep);
-				dep.print(*g_idx2word);
-				cout << probability << " > " << probability_not << " ?? " << endl;
 			}
 		}
+		return dependsList;
+	};
+	
+	vector<vector<Dependency>> r_2d = parallelize(patterns, check);
+
+	vector<Dependency> dependsList; 
+	for (auto v : r_2d){
+		vector_add(dependsList, v);
 	}
+
 	return dependsList;
 }
 
@@ -87,6 +103,8 @@ vector<Dependency> PatternToDependency(Docs& docs)
 		FrequentSet fs(path);
 		vector_add(dependsList, FS2Dependency(docs, fs));
 	}
+
+
 
 	return dependsList;
 }
@@ -147,6 +165,18 @@ Set2<int> FindOmission(
 
 // Doc 에서 생략을 찾자. 귀차느니까 바로 앞글을 dependency 라고 가정
 
+void save_dependency(string path, vector<Dependency>& dependencys)
+{
+	ofstream fout(path);
+	for (Dependency dep : dependencys)
+	{
+		cout << dep.target;
+		for (int item : dep.dependents)
+			cout << " " << item;
+		cout << endl;
+	}
+	fout.close();
+}
 
 void resolve_ommission()
 {
@@ -160,6 +190,7 @@ void resolve_ommission()
 	apply_clustering(indexdocs, cluster);
 	apply_cluster(idx2word, cluster);
 	vector<Dependency> dependsList = PatternToDependency(indexdocs);
+	save_dependency("dependency.index" , dependsList);
 
 	cout << "Loading raw sentence" << endl;
 	ifstream fin("..\\..\\input\\bobae_raw_sentence.txt");
