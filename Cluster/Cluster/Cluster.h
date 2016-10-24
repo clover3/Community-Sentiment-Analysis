@@ -117,3 +117,5 @@ void cluster_embedding();
 
 map<int, int> loadCluster(string path);
 void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels);
+
+void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster);

@@ -544,7 +544,7 @@ void cluster_embedding()
 	Embeddings* eb = loadEmbeddings(path);
 
     int k = 20;
-    int eps = 300;
+    float eps = 300;
     ifstream fin("parameter.txt");
     if( fin.good() )
         fin>> k >> eps;
@@ -560,4 +560,15 @@ void cluster_embedding()
 	display(label, eb);
 
 	delete eb;
+}
+
+
+void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster)
+{
+	for (auto item : cluster)
+	{
+		int voca = item.first;
+		int c_id = item.second;
+		idx2word[c_id] = idx2word[voca];
+	}
 }

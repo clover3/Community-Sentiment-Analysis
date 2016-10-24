@@ -1,4 +1,3 @@
-#pragma once
 #include "vectorComp.h"
 
 bool all_true(vector<bool> v)

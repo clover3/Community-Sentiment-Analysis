@@ -1,4 +1,3 @@
-#pragma once
 #include "ItemSet.h"
 
 bool ItemSet::joinable(ItemSet set1, ItemSet set2)

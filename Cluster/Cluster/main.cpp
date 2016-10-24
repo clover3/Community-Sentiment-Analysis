@@ -9,7 +9,7 @@ int main()
 	//all_test();
 	//cluster_embedding();
 
-	find_frequent_pattern();
-	//resolve_ommission();
+	//find_frequent_pattern();
+	resolve_ommission();
 	return 0;
 }

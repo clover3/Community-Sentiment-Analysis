@@ -28,3 +28,5 @@ private:
 	void init(vector<Doc>& docs);
 	std::map<int, vector<int>> invIndex;
 };
+
+void apply_clustering(Docs& docs, map<int, int>& cluster);
