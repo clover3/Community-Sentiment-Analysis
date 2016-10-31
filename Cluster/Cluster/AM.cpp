@@ -161,7 +161,7 @@ FrequentSet build_C2(FrequentSet L1)
 
 string genLpath(int i)
 {
-	return string("L") + to_string(i) + string(".txt");
+	return data_path + "L" + to_string(i) + ".txt";
 }
 
 void ExtractFrequent(Docs& docs)
@@ -235,11 +235,11 @@ void ExtractFrequent(Docs& docs)
 	}
 }
 
-void find_frequent_pattern()
+void find_frequent_pattern(string corpus_path)
 {
-	Docs docs("index_corpus.index");
+	Docs docs(corpus_path);
 
-	map<int, int> cluster = loadCluster("cluster_1.txt");
+	map<int, int> cluster = loadCluster(data_path + "cluster.txt");
 	apply_clustering(docs, cluster);
 
 	ExtractFrequent(docs);

@@ -21,6 +21,8 @@ public:
 	uint count_occurence_single(int item) const;
 	uint count_occurence(ItemSet itemSet) const;
 	uint count_occurence_except(ItemSet itemSet, int except) const;
+	uint count_occurence_without(int except) const;
+	uint count_occurence_without(int target, int except) const;
 	int max_word_index() const;
 
 	void filter_not_in(Set2<int> interested_word);

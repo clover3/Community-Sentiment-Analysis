@@ -22,5 +22,5 @@ public:
 	static bool joinable(ItemSet set1, ItemSet set2);
 	static ItemSet join(const ItemSet set1, const ItemSet set2);
 	static bool comp(ItemSet& i1, ItemSet& i2);
-	ItemSet operator-(int item);
+	ItemSet operator-(int item) const;
 };

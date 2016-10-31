@@ -1,7 +1,8 @@
+#include "stdafx.h"
 #include "Cluster.h"
 #include "ThreadPool.h"
 
-Embeddings* loadEmbeddings(char* path)
+Embeddings* loadEmbeddings(const char* path)
 {
 	Embeddings *ptr = new Embeddings;
 	FILE* fp;
@@ -451,7 +452,7 @@ void display(Labels& label, Embeddings* eb)
 	int nNonSingle = 0;
 
 
-	ofstream fout("cluster_text.txt");
+	ofstream fout(data_path + "cluster_text.txt");
 	for (auto & v : group)
 	{
 		if (v.second.size() > 1)
@@ -482,7 +483,7 @@ void output(Labels& label, Embeddings* eb)
 		group[l].push_back(i);
 	}
 
-	ofstream fout("output.txt");
+	ofstream fout(data_path + "output.txt");
 	for (auto & v : group)
 	{
 		if (v.second.size() > 1)
@@ -535,13 +536,9 @@ parameter :
 
 void cluster_embedding()
 {
-	printf("Runner ENTRY\n");
-#ifdef WINVS
-	char path[] = "..\\..\\input\\korean_word2vec_wv_300_euckr.txt";
-#else
-	char path[] = "../../input/korean_word2vec_wv_300_euckr.txt";
-#endif
-	Embeddings* eb = loadEmbeddings(path);
+	printf("cluster_embedding ENTRY\n");
+	string path = common_input + "korean_word2vec_wv_300_euckr.txt";
+	Embeddings* eb = loadEmbeddings(path.c_str());
 
     int k = 20;
     float eps = 300;
@@ -552,10 +549,10 @@ void cluster_embedding()
 
 	Labels label = Clustering::KMeans(eb, eps, k); 
 	output(label, eb);
-	map<string, int> word2idx = reverse_idx2word(load_idx2word("idx2word"));
+	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	
 	// Convert embedding index to voca index
-	save_cluster("cluster.txt", *eb, word2idx, label);
+	save_cluster(data_path + "cluster.txt", *eb, word2idx, label);
 	
 	display(label, eb);
 

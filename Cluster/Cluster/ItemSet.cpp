@@ -77,7 +77,7 @@ bool ItemSet::comp(ItemSet& i1, ItemSet& i2)
 }
 
 
-ItemSet ItemSet::operator-(int target)
+ItemSet ItemSet::operator-(int target) const
 {
 	ItemSet result;
 	for (int item : *this)

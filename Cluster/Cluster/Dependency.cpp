@@ -1,4 +1,5 @@
 #include "Dependency.h"
+#include <math.h>
 #include "Cluster.h"
 
 bool ignore_pattern(ItemSet itemSet)
@@ -33,9 +34,40 @@ int find_match(int i, vector<string>& rawdoc, Doc doc, Idx2Word& idx2word)
 
 Idx2Word* g_idx2word;
 
-vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
-{
 
+bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
+{
+	ItemSet remaining = pattern - item;
+
+	// Pattern = item + remaining
+	uint count_pattern = docs.count_occurence(pattern);
+	uint count_remain = docs.count_occurence(remaining);
+	uint count_item = docs.count_occurence_single(item);
+	float probability = float(count_pattern) / float(count_remain);
+	// P(item|remaining) = Count(pattern) / Count(remaining)
+
+	int remain_item = remaining[0];
+	uint count_item_without_remain = docs.count_occurence_without(item, remain_item);
+	uint count_without_remain = docs.count_occurence_without(remain_item);
+	float probability_not = float(count_item_without_remain) / float(count_without_remain);
+	// P(item|~remaining) = Count(item & ~remaining) / Count(~remaining)
+
+	uint count_remain_except = docs.count_occurence_except(remaining, item);
+	float probability_without = float(count_remain_except) / float(count_remain);
+	// P(~item|remaining) = Count(~item & remaining) / Count(remaining)
+
+	double lift = float(count_pattern) / sqrt(count_item *count_remain);
+
+	if (lift > 0.6 && probability - probability_without > 0.2)
+	{
+		return true;
+	}
+	else
+		return false;
+}
+
+vector<Dependency> get_dependency_mt(Docs& docs, FrequentSet& fs)
+{
 	cout << "Calculating Dependencies" << endl;
 	vector<ItemSet> patterns;
 	patterns.reserve(fs.size());
@@ -52,21 +84,15 @@ vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
 		//  pick one item.
 		for (int item : pattern)
 		{
-			ItemSet remaining = pattern - item;
-
-			// Pattern = item + remaining
-			// P(item|remaining) = Count(pattern) / Count(remaining)
-			// P(~item|remaining) = Count(~item & remaining) / Count(remaining)
-			uint count_pattern = docs.count_occurence(pattern);
-			uint count_remain = docs.count_occurence(remaining);
-			float probability = float(count_pattern) / float(count_remain);
-
-			uint count_remain_except = docs.count_occurence_except(remaining, item);
-			float probability_not = float(count_remain_except) / float(count_remain);
-			if (probability - probability_not > 0.2 && !ignore_pattern(pattern))
+			for (int item : pattern)
 			{
-				Dependency dep(item, remaining, probability);
-				dependsList.push_back(dep);
+				ItemSet remaining = pattern - item;
+				if (is_dependent(item, pattern, docs))
+				{
+					Dependency dep(item, remaining, 0);
+					dependsList.push_back(dep);
+					dep.print(*g_idx2word);
+				}
 			}
 		}
 		return dependsList;
@@ -83,6 +109,36 @@ vector<Dependency> FS2Dependency(Docs& docs, FrequentSet& fs)
 }
 
 
+vector<Dependency> get_dependency(Docs& docs, FrequentSet& fs)
+{
+	cout << "Calculating Dependencies" << endl;
+	vector<ItemSet> patterns;
+	patterns.reserve(fs.size());
+
+	for (ItemSet pattern : fs)
+	{
+		patterns.push_back(pattern);
+	}
+
+	vector<Dependency> dependsList;
+	for (auto pattern : patterns)
+	{
+		//  pick one item.
+		for (int item : pattern)
+		{
+			ItemSet remaining = pattern - item;
+			if (is_dependent(item, pattern, docs))
+			{
+				Dependency dep(item, remaining, 0);
+				dependsList.push_back(dep);
+				dep.print(*g_idx2word);
+			}
+		}
+	}
+
+	return dependsList;
+}
+
 
 bool missing(Doc& doc, int token)
 {
@@ -96,15 +152,13 @@ bool missing(Doc& doc, int token)
 
 vector<Dependency> PatternToDependency(Docs& docs)
 {
-	vector<string> fslist = { "L2.txt", "L3.txt" }; // , "L4.txt", "L5.txt"};
+	vector<string> fslist = { data_path+"L2.txt", data_path+"L3.txt" }; // , "L4.txt", "L5.txt"};
 	vector<Dependency> dependsList;
 	for (string path : fslist)
 	{
 		FrequentSet fs(path);
-		vector_add(dependsList, FS2Dependency(docs, fs));
+		vector_add(dependsList, get_dependency(docs, fs));
 	}
-
-
 
 	return dependsList;
 }
@@ -170,30 +224,34 @@ void save_dependency(string path, vector<Dependency>& dependencys)
 	ofstream fout(path);
 	for (Dependency dep : dependencys)
 	{
-		cout << dep.target;
+		fout << dep.target;
 		for (int item : dep.dependents)
-			cout << " " << item;
-		cout << endl;
+			fout << " " << item;
+		fout << endl;
 	}
 	fout.close();
 }
 
-void resolve_ommission()
+
+void resolve_ommission(string corpus_path)
 {
-	Docs docs("index_corpus.index");
-	map<int, string> idx2word = load_idx2word("idx2word");
+	cout << "Task>> Resolve omission" << endl;
+	Docs docs(corpus_path);
+	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	g_idx2word = &idx2word;
 
-	Docs indexdocs("index_corpus.index");
+	Docs indexdocs(corpus_path);
 
-	map<int, int> cluster = loadCluster("cluster_1.txt");
+	map<int, int> cluster = loadCluster(data_path + "cluster_ep20.txt");
 	apply_clustering(indexdocs, cluster);
 	apply_cluster(idx2word, cluster);
-	vector<Dependency> dependsList = PatternToDependency(indexdocs);
-	save_dependency("dependency.index" , dependsList);
+	//vector<Dependency> dependsList = PatternToDependency(indexdocs);
+	FrequentSet fs(data_path + "L2_head_sentence.txt");
+	vector<Dependency> dependsList = get_dependency(indexdocs, fs);
+	save_dependency(data_path + "dependency.index" , dependsList);
 
 	cout << "Loading raw sentence" << endl;
-	ifstream fin("..\\..\\input\\bobae_raw_sentence.txt");
+	ifstream fin(common_input + "bobae_raw_sentence.txt");
 	vector<string> rawdoc;
 	string temp;
 	while (getline(fin, temp))
@@ -210,12 +268,15 @@ void resolve_ommission()
 		{
 			cout << "--------------------------------------" << endl;
 			cout << "Index = " << i << endl;
-			cout << "prev : " << endl;
+			cout << "¢º prev\t: " << rawdoc[i - 1] << endl;
+			cout << " tokens\t : [";
 			print_doc(docs[i - 1], idx2word);
-			cout << rawdoc[i - 1] << endl;
-			cout << "this : " << endl;
+			cout << "]" << endl;
+			cout << "¢º this\t:" << rawdoc[i] << endl;
+			cout << " tokens\t : [";
 			print_doc(docs[i], idx2word);
-			cout << rawdoc[i] << endl;
+			cout << "]" << endl;
+
 			cout << "This sentence was missing : ";
 			for (int token : ommision)
 				cout << idx2word[token] << " ";

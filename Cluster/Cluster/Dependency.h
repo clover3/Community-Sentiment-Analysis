@@ -33,3 +33,6 @@ Set2<int> FindOmission(
 	vector<Dependency>& dependencyList,
 	map<int, string>& idx2word,
 	map<int, int>& cluster);
+
+
+void resolve_ommission(string corpus_path);

@@ -30,6 +30,14 @@ using uint = size_t;
 
 using namespace std;
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+static const std::string slash = "\\";
+#else
+static const std::string slash = "/";
+#endif
+
+static const string data_path = "data"+ slash;
+static const string common_input = ".." + slash + ".." + slash +"input" + slash;
 
 template <typename T, typename U>
 U foldLeft(const std::vector<T>& data,
@@ -135,11 +143,11 @@ vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 	};
 
 	vector<future<vector<U>>> f_list;
-	int unit = input.size() / nThread;
-	for (int i = 0; i < nThread; i++)
+	uint unit = input.size() / nThread;
+	for (uint i = 0; i < nThread; i++)
 	{
-		int st = i * unit;
-		int ed = (i + 1) * unit;
+		uint st = i * unit;
+		uint ed = (i + 1) * unit;
 		ITR itr_begin = input.begin() + st;
 		ITR itr_end = input.begin() + ed;
 		f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
@@ -153,3 +161,16 @@ vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 	}
 	return merged;
 }
+
+template <typename T>
+class Counter : public map < T, int > {
+public:
+	void add_count(T& item)
+	{
+		if (this->find(item) == this->end())
+		{
+			(*this)[item] = 0;
+		}
+		(*this)[item] = (*this)[item] + 1;
+	}
+};

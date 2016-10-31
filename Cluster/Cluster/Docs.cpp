@@ -6,7 +6,7 @@ void print_doc(Doc& doc, map<int,string>& idx2word)
 	{
 		cout << idx2word[word] << " ";
 	}
-	cout << endl;
+
 }
 
 
@@ -218,6 +218,20 @@ uint Docs::count_occurence_except(ItemSet itemSet, int except) const
 	return remain_occurence.size();
 }
 
+uint Docs::count_occurence_without(int except) const
+{
+	uint total = size();
+	vector<int> avoid_occurence = get_occurence(except);
+	return total - avoid_occurence.size();
+}
+
+uint Docs::count_occurence_without(int target, int except) const
+{
+	vector<int> occurence = get_occurence(target);
+	vector<int> avoid_occurence = get_occurence(except);
+	vector<int> remain_occurence = vector_except(occurence, avoid_occurence);
+	return remain_occurence.size();
+}
 
 
 void apply_clustering(Docs& docs, map<int, int>& cluster)
