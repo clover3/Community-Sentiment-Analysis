@@ -147,6 +147,7 @@
     <ClCompile Include="AM.cpp" />
     <ClCompile Include="AMTest.cpp" />
     <ClCompile Include="Cluster.cpp" />
+    <ClCompile Include="Dependency.cpp" />
     <ClCompile Include="Docs.cpp" />
     <ClCompile Include="FrequentSet.cpp" />
     <ClCompile Include="ItemSet.cpp" />
@@ -157,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="AM.h" />
     <ClInclude Include="Cluster.h" />
+    <ClInclude Include="Dependency.h" />
     <ClInclude Include="Docs.h" />
     <ClInclude Include="FrequentSet.h" />
     <ClInclude Include="ItemSet.h" />

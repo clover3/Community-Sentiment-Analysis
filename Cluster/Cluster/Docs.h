@@ -16,6 +16,7 @@ public:
 
 	size_t docsize() const;
 
+	void rebuild_index();
 	vector<int> get_occurence(int word) const;
 	uint count_occurence_single(int item) const;
 	uint count_occurence(ItemSet itemSet) const;
@@ -27,3 +28,5 @@ private:
 	void init(vector<Doc>& docs);
 	std::map<int, vector<int>> invIndex;
 };
+
+void apply_clustering(Docs& docs, map<int, int>& cluster);

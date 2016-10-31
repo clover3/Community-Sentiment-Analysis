@@ -1,4 +1,3 @@
-#pragma once
 #include "AM.h"
 
 void print_doc(Doc& doc, map<int,string>& idx2word)
@@ -17,6 +16,27 @@ void Docs::init(vector<Doc>& docs)
 	{
 		push_back(docs[i]);
 		for (int word : docs[i])
+		{
+			if (invIndex.find(word) == invIndex.end())
+			{
+				invIndex[word] = vector<int>();
+			}
+			invIndex[word].push_back(i);
+		}
+	}
+
+	for (auto& key_value : invIndex)
+	{
+		sort(key_value.second);
+	}
+}
+
+void Docs::rebuild_index()
+{
+	invIndex.clear();
+	for (int i = 0; i < size(); i++)
+	{
+		for (int word : (*this)[i])
 		{
 			if (invIndex.find(word) == invIndex.end())
 			{
@@ -198,3 +218,29 @@ uint Docs::count_occurence_except(ItemSet itemSet, int except) const
 	return remain_occurence.size();
 }
 
+
+
+void apply_clustering(Docs& docs, map<int, int>& cluster)
+{
+
+	int cluster_prefix = 100000000;
+	if (docs.max_word_index() >= cluster_prefix)
+		cluster_prefix = docs.max_word_index() + 1;
+
+
+	ofstream fout("clustering.log");
+	fout << cluster_prefix;
+	fout.close();
+
+	for (Doc &doc : docs)
+	{
+		for (int& word : doc)
+		{
+			if (cluster.find(word) != cluster.end())
+			{
+				word = cluster[word] + cluster_prefix;
+			}
+		}
+	}
+	docs.rebuild_index();
+}

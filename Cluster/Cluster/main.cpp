@@ -7,9 +7,9 @@ extern void find_frequent_pattern();
 int main()
 {
 	//all_test();
-	cluster_embedding();
+	//cluster_embedding();
 
 	//find_frequent_pattern();
-	//resolve_ommission();
+	resolve_ommission();
 	return 0;
 }

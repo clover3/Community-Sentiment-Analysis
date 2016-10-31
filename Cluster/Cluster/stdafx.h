@@ -115,3 +115,41 @@ void vector_add(vector<T>& first, const vector<T>& second)
 {
 	first.insert(first.end(), second.begin(), second.end());
 }
+
+
+template <typename T, typename U>
+vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
+{
+	int nThread = std::thread::hardware_concurrency();
+	using ITR = vector<T>::const_iterator;
+
+	function<vector<U>(ITR, ITR)> evaluator =
+		[eval](ITR begin, ITR end)
+	{
+		vector<U> result;
+		for (ITR itr = begin; itr != end; itr++)
+		{
+			result.push_back(eval(*itr));
+		}
+		return result;
+	};
+
+	vector<future<vector<U>>> f_list;
+	int unit = input.size() / nThread;
+	for (int i = 0; i < nThread; i++)
+	{
+		int st = i * unit;
+		int ed = (i + 1) * unit;
+		ITR itr_begin = input.begin() + st;
+		ITR itr_end = input.begin() + ed;
+		f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
+	}
+
+	vector<U> merged;
+	for (auto &f : f_list)
+	{
+		vector<U> temp = f.get();
+		//vector_add(merged, temp);
+	}
+	return merged;
+}
