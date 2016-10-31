@@ -10,7 +10,8 @@ void print_doc(Doc& doc, map<int, string>& idx2word);
 class Docs : public vector < Doc >
 {
 public:
-	Docs(string path);
+	Docs(string path){};
+	Docs(string path, MCluster& mcluster);
 	Docs(vector<Doc>& docs);
 	Docs(Idx2Word& idx2word, string path);
 
@@ -28,6 +29,7 @@ public:
 	void filter_not_in(Set2<int> interested_word);
 private:
 	void init(vector<Doc>& docs);
+	void init2(vector<Doc>& docs, MCluster& mcluster);
 	std::map<int, vector<int>> invIndex;
 };
 

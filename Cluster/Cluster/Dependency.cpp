@@ -293,7 +293,9 @@ void resolve_ommission(string corpus_path)
 		rawdoc.push_back(temp);
 	}
 
-	Docs docs(corpus_path);
+	MCluster mcluster;//TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOO
+
+	Docs docs(corpus_path, mcluster);
 
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");

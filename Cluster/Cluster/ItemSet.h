@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.h"
+#include "Cluster.h"
 
 template< typename T, size_t N >
 std::vector<T> makeVector(const T(&data)[N])
@@ -19,7 +20,7 @@ public:
 
 	vector<ItemSet> subsets() const;
 
-	static bool joinable(ItemSet set1, ItemSet set2);
+	static bool joinable(ItemSet set1, ItemSet set2, const MCluster& mcluster);
 	static ItemSet join(const ItemSet set1, const ItemSet set2);
 	static bool comp(ItemSet& i1, ItemSet& i2);
 	ItemSet operator-(int item) const;

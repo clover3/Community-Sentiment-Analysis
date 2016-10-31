@@ -1,3 +1,4 @@
+#pragma once
 #include "stdafx.h"
 #include "word2idx.h"
 
@@ -119,3 +120,31 @@ map<int, int> loadCluster(string path);
 void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels);
 
 void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster);
+
+class MCluster
+{
+public:
+	const vector<int> get_categories(int word) const;
+	const vector<int> get_words(int category) const;
+
+	bool different(int cword1, int cword2) const;
+	void add_cluster(map<int, int>& cluster);
+
+	vector<int> get_all_words() const 
+	{
+		std::vector<int> words;
+		for (auto pair : word2categories)
+			words.push_back(pair.first);
+		return words;
+	}
+	vector<int> get_all_categorys() const
+	{
+		std::vector<int> v;
+		for (auto pair : category2words)
+			v.push_back(pair.first);
+		return v;
+	}
+private:
+	map<int, vector<int>> word2categories;
+	map<int, vector<int>> category2words;
+};
