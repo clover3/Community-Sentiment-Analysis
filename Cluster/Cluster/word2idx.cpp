@@ -8,12 +8,13 @@ map<int, string> load_idx2word(string path)
 	string line;
 	while (std::getline(infile, line))
 	{
+        line = trim(line);
 		std::istringstream iss(line);
 		int idx;
 		iss >> idx;
-		string word;
-		getline(iss, word);
-		idx2word[idx] = word.substr(1);
+        int loc = line.find('\t');
+		string word = line.substr(loc+1);
+		idx2word[idx] = word;
 	}
 	return idx2word;
 }
