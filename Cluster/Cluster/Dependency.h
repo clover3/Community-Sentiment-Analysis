@@ -35,4 +35,5 @@ Set2<int> FindOmission(
 	map<int, int>& cluster);
 
 
+vector<Dependency> eval_dependency(string corpus_path);
 void resolve_ommission(string corpus_path);

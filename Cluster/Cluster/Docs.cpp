@@ -62,6 +62,7 @@ Docs::Docs(string path)
 {
 	vector<Doc> rawDocs;
 	ifstream infile(path);
+	check_file(infile, path);
 	string line;
 	while (std::getline(infile, line))
 	{

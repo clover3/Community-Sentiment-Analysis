@@ -58,7 +58,12 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 
 	double lift = float(count_pattern) / sqrt(count_item *count_remain);
 
-	if (lift > 0.6 && probability - probability_without > 0.2)
+	if (remain_item == 100000883)
+	{
+		cout << (*g_idx2word)[item] << " | " << (*g_idx2word)[remain_item] << " lift = " << lift << " p = " << probability << " p_w = " << probability_without << endl;
+	}
+
+	if (lift > 0.6 ) // && probability - probability_without > 0.2)
 	{
 		return true;
 	}
@@ -233,25 +238,54 @@ void save_dependency(string path, vector<Dependency>& dependencys)
 }
 
 
-void resolve_ommission(string corpus_path)
+vector<Dependency> load_dependency(string path)
 {
-	cout << "Task>> Resolve omission" << endl;
+	ifstream infile(path);
+	check_file(infile, path);
+
+	vector<Dependency> dlist;
+	string line;
+	while (getline(infile, line))
+	{
+		vector<int> itemset;
+		std::istringstream iss(line);
+		int item;
+		iss >> item;
+
+		int token;
+		while (!iss.eof()){
+			iss >> token;
+			itemset.push_back(token);
+		}
+		Dependency dep(item, itemset, 0);
+		dlist.push_back(dep);
+	}
+	return dlist;
+}
+
+vector<Dependency> eval_dependency(string corpus_path)
+{
 	Docs docs(corpus_path);
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	g_idx2word = &idx2word;
 
 	Docs indexdocs(corpus_path);
 
-	map<int, int> cluster = loadCluster(data_path + "cluster_ep20.txt");
+	map<int, int> cluster = loadCluster(data_path + "cluster_ep200.txt");
 	apply_clustering(indexdocs, cluster);
 	apply_cluster(idx2word, cluster);
 	//vector<Dependency> dependsList = PatternToDependency(indexdocs);
-	FrequentSet fs(data_path + "L2_head_sentence.txt");
+	FrequentSet fs(data_path + "L2_ep200.txt");
 	vector<Dependency> dependsList = get_dependency(indexdocs, fs);
-	save_dependency(data_path + "dependency.index" , dependsList);
+	save_dependency(data_path + "dependency.index", dependsList);
+	return dependsList;
+}
 
+void resolve_ommission(string corpus_path)
+{
 	cout << "Loading raw sentence" << endl;
 	ifstream fin(common_input + "bobae_raw_sentence.txt");
+	check_file(fin, common_input + "bobae_raw_sentence.txt");
 	vector<string> rawdoc;
 	string temp;
 	while (getline(fin, temp))
@@ -259,7 +293,11 @@ void resolve_ommission(string corpus_path)
 		rawdoc.push_back(temp);
 	}
 
+	Docs docs(corpus_path);
 
+	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
+	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
+	map<int, int> cluster = loadCluster(data_path + "cluster_ep200.txt");
 	cout << "Now resolve omission" << endl;
 	for (uint i = 1; i < docs.size(); i++)
 	{

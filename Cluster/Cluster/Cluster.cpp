@@ -426,6 +426,8 @@ map<int, int> loadCluster(string path)
 {
 	map<int, int> dict;
 	ifstream infile(path);
+	check_file(infile, path);
+
 	string line;
 	while (std::getline(infile, line))
 	{
@@ -546,9 +548,10 @@ void cluster_embedding()
 
     int k = 20;
     float eps = 300;
-    ifstream fin("parameter.txt");
-    if( fin.good() )
-        fin>> k >> eps;
+	string path_param = "parameter.txt";
+	ifstream fin(path_param);
+	check_file(fin, path_param);
+	fin>> k >> eps;
     cout<< "k=" << k << " Eps=" << eps <<endl;
 
 	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));

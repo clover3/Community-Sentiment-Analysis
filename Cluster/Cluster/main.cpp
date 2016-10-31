@@ -40,9 +40,13 @@ int main(int argc, char *argv[])
 	}
 	else if (command == 3)
 	{
+		cout << "Task>> Eval Dependency" << endl;
+		eval_dependency(corpus_path);
+	}
+	else if (command == 4)
+	{
 		cout << "Task>> Resolve omission" << endl;
 		resolve_ommission(corpus_path);
 	}
-
 	return 0;
 }

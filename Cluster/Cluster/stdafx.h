@@ -174,3 +174,12 @@ public:
 		(*this)[item] = (*this)[item] + 1;
 	}
 };
+
+static void check_file(ifstream& infile, string& path)
+{
+	if (!infile.good())
+	{
+		cout << "File not valid : " + path << endl;
+		exit(0);
+	}
+}

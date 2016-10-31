@@ -4,6 +4,8 @@
 FrequentSet::FrequentSet(string path)
 {
 	ifstream infile(path);
+	check_file(infile, path);
+
 	string line;
 	while (std::getline(infile, line))
 	{
