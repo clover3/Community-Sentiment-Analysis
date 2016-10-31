@@ -237,7 +237,7 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 	size_t nNode = eb->size();
 	Labels labels(nNode);
 
-	cout << "Iterating ";
+	printf("Iterating ");
 
     int nThread = std::thread::hardware_concurrency();
     ThreadPool pool(nThread);
@@ -247,7 +247,8 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 	while (retry)
 	{
 		cnt++;
-		cout << ".";
+		printf(".");
+        fflush(stdout);
 
 		retry = false;
 		// assign each points to nearest label
@@ -293,6 +294,7 @@ Labels Clustering::KMeans(Embeddings* eb, Centroids centroids, float eps, int k)
 			labels[i] = i;
 		}
 	}
+    printf("Done\n");
 
 	return labels;
 }
@@ -375,7 +377,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	size_t nNode = eb->size();
 	Labels labels(nNode);
 
-	printf("running clustering...\n");
+	printf("running clustering...");
 
 	vector<int> rank(nNode);
 	for (auto r : rank)
@@ -384,6 +386,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	bool retry = true;
 	while (retry)
 	{
+        cout<<".";
 		retry = false;
 		for (unsigned int i = 0; i < nNode; i++)
 		{
