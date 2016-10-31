@@ -121,7 +121,7 @@ template <typename T, typename U>
 vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 {
 	int nThread = std::thread::hardware_concurrency();
-	using ITR = vector<T>::const_iterator;
+	using ITR = typename vector<T>::const_iterator;
 
 	function<vector<U>(ITR, ITR)> evaluator =
 		[eval](ITR begin, ITR end)
