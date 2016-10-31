@@ -551,10 +551,9 @@ void cluster_embedding()
         fin>> k >> eps;
     cout<< "k=" << k << " Eps=" << eps <<endl;
 
-	map<string, int> word2idx = reverse_idx2word(load_idx2word("idx2word"));
+	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	Labels label = Clustering::KMeans(eb, eps, k); 
 	output(label, eb);
-	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	
 	// Convert embedding index to voca index
 	save_cluster(data_path + "cluster.txt", *eb, word2idx, label);
