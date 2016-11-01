@@ -45,7 +45,7 @@ void Docs::init2(vector<Doc>& docs, MCluster& mcluster)
 			}
 			invIndex[word].push_back(i);
 
-			const vector<int>& categories = mcluster.get_categories(word);
+			vector<int> categories = mcluster.get_categories(word);
 			for (int category : categories){
 				if (invIndex.find(category) == invIndex.end())
 				{
@@ -265,28 +265,3 @@ uint Docs::count_occurence_without(int target, int except) const
 	return remain_occurence.size();
 }
 
-
-void apply_clustering(Docs& docs, map<int, int>& cluster)
-{
-
-	int cluster_prefix = 100000000;
-	if (docs.max_word_index() >= cluster_prefix)
-		cluster_prefix = docs.max_word_index() + 1;
-
-
-	ofstream fout("clustering.log");
-	fout << cluster_prefix;
-	fout.close();
-
-	for (Doc &doc : docs)
-	{
-		for (int& word : doc)
-		{
-			if (cluster.find(word) != cluster.end())
-			{
-				word = cluster[word] + cluster_prefix;
-			}
-		}
-	}
-	docs.rebuild_index();
-}

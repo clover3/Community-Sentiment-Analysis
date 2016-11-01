@@ -567,26 +567,25 @@ void cluster_embedding()
 }
 
 
-void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster)
+vector<int> MCluster::get_categories(int word) const 
 {
-	for (auto item : cluster)
+	if (word2categories.find(word) == word2categories.end())
 	{
-		int voca = item.first;
-		int c_id = item.second + 100000000;
-		idx2word[c_id] = idx2word[voca];
+		return vector<int>();
 	}
-}
-
-
-const vector<int> MCluster::get_categories(int word) const 
-{
-	const vector<int> v = word2categories.find(word).operator*().second;
+	
+	vector<int> v = word2categories.find(word).operator*().second;
 	return v;
 }
 
-const vector<int> MCluster::get_words(int category) const
+vector<int> MCluster::get_words(int category) const
 {
-	const vector<int> v = category2words.find(category).operator*().second;
+	if (category2words.find(category) == category2words.end())
+	{
+		return vector<int>();
+	}
+
+	vector<int> v = category2words.find(category).operator*().second;
 	return v;
 }
 
@@ -594,12 +593,12 @@ bool MCluster::different(int cword1, int cword2) const
 {
 	vector<int> v1, v2;
 	if (cword1 > 10000000)
-		v1 = word2categories.find(cword1).operator*().second;
+		v1 = get_words(cword1);
 	else
 		v1.push_back(cword1);
 
 	if (cword2 > 10000000)
-		v2 = word2categories.find(cword2).operator*().second;
+		v2 = get_words(cword2);
 	else
 		v2.push_back(cword2);
 
@@ -607,12 +606,12 @@ bool MCluster::different(int cword1, int cword2) const
 	return vr.size() == 0;
 }
 
-void MCluster::add_cluster(map<int, int>& cluster)
+void MCluster::add_cluster(map<int, int>& cluster, int prefix)
 {
 	for (auto item : cluster)
 	{
 		int voca = item.first;
-		int category = item.second;
+		int category = prefix + item.second;
 
 		if (word2categories.find(voca) == word2categories.end())
 			word2categories[voca] = vector<int>();

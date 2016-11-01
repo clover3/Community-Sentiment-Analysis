@@ -124,11 +124,11 @@ void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster);
 class MCluster
 {
 public:
-	const vector<int> get_categories(int word) const;
-	const vector<int> get_words(int category) const;
+	vector<int> get_categories(int word) const;
+	vector<int> get_words(int category) const;
 
 	bool different(int cword1, int cword2) const;
-	void add_cluster(map<int, int>& cluster);
+	void add_cluster(map<int, int>& cluster, int prefix);
 
 	vector<int> get_all_words() const 
 	{

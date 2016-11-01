@@ -49,7 +49,7 @@ FrequentSet prune_candidate_v(
 }
 
 
-FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, uint min_dup)
 {
 	int nThread = std::thread::hardware_concurrency();
     printf("Working on %d threads\n", nThread);
@@ -84,7 +84,7 @@ FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const F
 	return fs_all;
 }
 
-FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, uint min_dup)
 {
 	// Make L2
 	vector<ItemSet> v(C_k.begin(), C_k.end());
@@ -139,6 +139,7 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 			{
 				ItemSet newset;
 				newset.push_back(lastItem1);
+
 				newset.push_back(lastItem2);
 				C2.insert(newset);
 			}
@@ -229,11 +230,13 @@ void ExtractFrequent(Docs& docs, MCluster& mcluster)
 
 void find_frequent_pattern(string corpus_path)
 {
+	cout << "Loading clusters...";
 	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
 	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
 	MCluster mcluster;
-	mcluster.add_cluster(cluster1);
-	mcluster.add_cluster(cluster2);
+	mcluster.add_cluster(cluster1, 10000000);
+	mcluster.add_cluster(cluster2, 20000000);
+	cout << endl;
 
 	Docs docs(corpus_path, mcluster);
 	ExtractFrequent(docs, mcluster);

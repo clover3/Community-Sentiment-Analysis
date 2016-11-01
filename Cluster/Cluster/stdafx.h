@@ -97,6 +97,11 @@ public:
 	bool has(T elem){
 		return (this->find(elem) != this->end());
 	}
+	void add(const vector<T>& v){
+		for (const T& item : v){
+			insert(item);
+		}
+	}
 };
 
 // trim from start
