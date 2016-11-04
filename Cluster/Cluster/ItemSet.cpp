@@ -1,6 +1,6 @@
 #include "ItemSet.h"
 
-bool ItemSet::joinable(ItemSet set1, ItemSet set2)
+bool ItemSet::joinable(ItemSet set1, ItemSet set2, const MCluster& mcluster)
 {
 	assert(set1.size() == set2.size());
 	bool suc = true;
@@ -9,11 +9,11 @@ bool ItemSet::joinable(ItemSet set1, ItemSet set2)
 
 	for (unsigned i = 0; i < ss - 1; i++)
 	{
-		if (set1[i] != set2[i])
+		if (set1[i] != set2[i] )
 			return false;
 	}
 
-	if (set1[ss - 1] < set2[ss - 1])
+	if (set1[ss - 1] < set2[ss - 1] && mcluster.different(set1[ss-1], set2[ss-1]) )
 		return true;
 	else
 		return false;

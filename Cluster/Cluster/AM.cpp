@@ -7,7 +7,7 @@ void print_function_complete(const char* function_name)
 	printf("%s Completed\n", function_name);
 }
 
-FrequentSet generate_candidate(FrequentSet L_k)
+FrequentSet generate_candidate(FrequentSet L_k, const MCluster& mcluster)
 {
 	FrequentSet C_next;
 	for (ItemSet set1 : L_k)
@@ -15,7 +15,7 @@ FrequentSet generate_candidate(FrequentSet L_k)
 		assert(sorted(set1));
 		for (ItemSet set2 : L_k)
 		{
-			if (ItemSet::joinable(set1, set2))
+			if (ItemSet::joinable(set1, set2, mcluster))
 			{
 				C_next.insert(ItemSet::join(set1, set2));
 			}
@@ -34,32 +34,22 @@ FrequentSet prune_candidate_v(
 {
 	// Make L2
 	FrequentSet L2;
-	int prune = 0;
-	int nprune = 0;
 	for (vector<ItemSet>::iterator itr = begin ; itr != end ; itr++)
 	{
 		ItemSet candidate = *itr;
-		// TODO Prue by L_prev
-		bool fCountRequired = true; // (candidate.size() == 2 || all_of(subsets(candidate), contain(L_prev)));
-		if (fCountRequired)
+		//count occurence
+		uint occurence = docs.count_occurence(candidate);
+		if (occurence >= min_dup)
 		{
-			nprune++;
-			//count occurence
-			uint occurence = docs.count_occurence(candidate);
-			if (occurence >= min_dup)
-			{
-				L2.insert(candidate);
-			}
+			L2.insert(candidate);
 		}
-		else
-			prune++;
 	}
 	
 	return L2;
 }
 
 
-FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, uint min_dup)
 {
 	int nThread = std::thread::hardware_concurrency();
     printf("Working on %d threads\n", nThread);
@@ -94,7 +84,7 @@ FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const F
 	return fs_all;
 }
 
-FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, int min_dup)
+FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, uint min_dup)
 {
 	// Make L2
 	vector<ItemSet> v(C_k.begin(), C_k.end());
@@ -128,7 +118,7 @@ void sort(vector<ItemSet>& v)
 	sort(v.begin(), v.end(), ItemSet::comp);
 }
 
-FrequentSet build_C2(FrequentSet L1)
+FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 {
 	FrequentSet C2;
 	uint middle = L1.size() / 2;
@@ -145,10 +135,11 @@ FrequentSet build_C2(FrequentSet L1)
 		{
 			int lastItem1 = set1[0];
 			int lastItem2 = set2[0];
-			if (lastItem1 < lastItem2)
+			if (lastItem1 < lastItem2 && mcluster.different(lastItem1, lastItem2))
 			{
 				ItemSet newset;
 				newset.push_back(lastItem1);
+
 				newset.push_back(lastItem2);
 				C2.insert(newset);
 			}
@@ -164,20 +155,11 @@ string genLpath(int i)
 	return data_path + "L" + to_string(i) + ".txt";
 }
 
-void ExtractFrequent(Docs& docs)
+void ExtractFrequent(Docs& docs, MCluster& mcluster)
 {
-	Counter<int> counts;
-	int min_dup = 100;
-	
+	uint min_dup = 20;
 
-	for (vector<int> doc : docs){
-		for (int word : doc)
-		{
-			counts.add_count(word);
-		}
-	}
 
-	Set2<int> L1;
 	vector<FrequentSet> L;
 	vector<FrequentSet> C;
 	L.resize(10);
@@ -186,29 +168,40 @@ void ExtractFrequent(Docs& docs)
 
 	cout << "Making\t L1..." ;
 
-	for (auto item : counts)
+	vector<int> all_words = mcluster.get_all_words();
+	for (int word : all_words)
 	{
-		int count = item.second;
-		int word = item.first;
-
+		uint count = docs.count_occurence_single(word);
 		if (count >= min_dup)
 		{
 			ItemSet items;
 			items.push_back(word);
 			L[0].insert(items);
-			L1.insert(word);
+		}
+	}
+
+
+	vector<int> all_categories = mcluster.get_all_categorys();
+	for (int word : all_categories)
+	{
+		uint count = docs.count_occurence_single(word);
+		if (count >= min_dup)
+		{
+			ItemSet items;
+			items.push_back(word);
+			L[0].insert(items);
 		}
 	}
 
 	cout << L[0].size() << " sets. " << elapsed() << "ms" << endl;
 	L[0].save(genLpath(1));
 
-	printf("Doc size reduction : %d->", docs.docsize());
-	docs.filter_not_in(L1);
+//	printf("Doc size reduction : %d->", docs.docsize());
+//	docs.filter_not_in(L1);
 	printf("%d\n", docs.docsize());
 
 	cout << "Generate C2...";
-	C[1] = build_C2(L[0]);
+	C[1] = build_C2(L[0], mcluster);
 	cout << C[1].size() << " sets. " << elapsed() << "ms" <<endl;
 
 	cout << "Pruning L2...";
@@ -221,7 +214,7 @@ void ExtractFrequent(Docs& docs)
 	for (int i = 2; i < 10; i++)
 	{
 		cout << "Generate C" << i+1 << "...";
-		C[i] = generate_candidate(L[i-1]);
+		C[i] = generate_candidate(L[i-1], mcluster);
 		cout << C[i].size() << " sets. " << elapsed() << "ms" << endl;
 		// Make L3
 
@@ -237,11 +230,15 @@ void ExtractFrequent(Docs& docs)
 
 void find_frequent_pattern(string corpus_path)
 {
-	Docs docs(corpus_path);
+	cout << "Loading clusters...";
+	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
+	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
+	MCluster mcluster;
+	mcluster.add_cluster(cluster1, 10000000);
+	mcluster.add_cluster(cluster2, 20000000);
+	cout << endl;
 
-	map<int, int> cluster = loadCluster(data_path + "cluster.txt");
-	apply_clustering(docs, cluster);
-
-	ExtractFrequent(docs);
+	Docs docs(corpus_path, mcluster);
+	ExtractFrequent(docs, mcluster);
 }
 

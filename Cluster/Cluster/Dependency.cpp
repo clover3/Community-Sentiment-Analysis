@@ -109,7 +109,7 @@ vector<Dependency> get_dependency_mt(Docs& docs, FrequentSet& fs)
 }
 
 
-vector<Dependency> get_dependency(Docs& docs, FrequentSet& fs)
+vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& fs)
 {
 	cout << "Calculating Dependencies" << endl;
 	vector<ItemSet> patterns;
@@ -140,39 +140,48 @@ vector<Dependency> get_dependency(Docs& docs, FrequentSet& fs)
 }
 
 
-bool missing(Doc& doc, int token)
+// token can be both(real_word, category)
+bool contain_cword(Doc& doc, int token, MCluster& mcluster)
 {
 	for (auto item : doc)
 	{
-		if (item == token)
+		if (item == token) // Case real word
+			return true;
+
+		// case category 
+		vector<int> categories = mcluster.get_categories(item);
+		if (contain(categories, token))
+			return true;
+	}
+	return false;
+}
+
+bool missing_cword(Doc& doc, int token, MCluster& mcluster)
+{
+	return !contain_cword(doc, token, mcluster);
+}
+
+bool contain_cwords(Doc& doc, vector<int> cwords, MCluster& mcluster)
+{
+	for (auto target : cwords)
+	{
+		if (missing_cword(doc, target, mcluster))
 			return false;
 	}
 	return true;
 }
 
-vector<Dependency> PatternToDependency(Docs& docs)
+vector<Dependency> PatternToDependency(Docs& docs, MCluster& mcluster)
 {
 	vector<string> fslist = { data_path+"L2.txt", data_path+"L3.txt" }; // , "L4.txt", "L5.txt"};
 	vector<Dependency> dependsList;
 	for (string path : fslist)
 	{
 		FrequentSet fs(path);
-		vector_add(dependsList, get_dependency(docs, fs));
+		vector_add(dependsList, get_dependency(docs, mcluster, fs));
 	}
 
 	return dependsList;
-}
-
-void apply_clustering(Doc& doc, map<int, int>& cluster)
-{
-	for (int& word : doc)
-	{
-		if (cluster.find(word) != cluster.end())
-		{
-			word = cluster[word] + 100000000;
-		}
-	}
-
 }
 
 
@@ -181,35 +190,33 @@ Set2<int> FindOmission(
 	Doc& predoc,
 	vector<Dependency>& dependencyList,
 	map<int, string>& idx2word,
-	map<int, int>& cluster)
+	MCluster& mcluster)
 {
 	Set2<int> omission_symbol;
 
-	Doc doc_this = doc;
-	Doc doc_pre = predoc;
-	apply_clustering(doc_this, cluster);
-	apply_clustering(doc_pre, cluster);
-	Set2<int> predoc_set(predoc);
 	for (Dependency dependency : dependencyList)
 	{
-		sort(doc_this);
-		if (contain(doc, dependency.dependents))
+		if (contain_cwords(doc, dependency.dependents, mcluster))
 		{
-			if (missing(doc, dependency.target) && predoc_set.has(dependency.target))
+			if (missing_cword(doc, dependency.target, mcluster)
+				&& contain_cword(predoc, dependency.target, mcluster) )
 			{
 				omission_symbol.insert(dependency.target);
 			}
 		}
 	}
 
-	Set2<int> omission_word;
-	for (int word : doc_pre)
+	Set2<int> possible_omission_words;
+	for (int cword : omission_symbol)
 	{
-		int symbol = word;
-		if (cluster.find(word) != cluster.end())
-			symbol = cluster[word];
+		possible_omission_words.insert(cword);
+		possible_omission_words.add(mcluster.get_words(cword));
+	}
 
-		if (omission_symbol.has(symbol))
+	Set2<int> omission_word;
+	for (int word : predoc)
+	{
+		if (possible_omission_words.has(word))
 		{
 			omission_word.insert(word);
 		}
@@ -233,25 +240,58 @@ void save_dependency(string path, vector<Dependency>& dependencys)
 }
 
 
-void resolve_ommission(string corpus_path)
+vector<Dependency> load_dependency(string path)
 {
-	cout << "Task>> Resolve omission" << endl;
-	Docs docs(corpus_path);
+	ifstream infile(path);
+	check_file(infile, path);
+
+	vector<Dependency> dlist;
+	string line;
+	while (getline(infile, line))
+	{
+		vector<int> itemset;
+		std::istringstream iss(line);
+		int item;
+		iss >> item;
+
+		int token;
+		while (!iss.eof()){
+			iss >> token;
+			itemset.push_back(token);
+		}
+		Dependency dep(item, itemset, 0);
+		dlist.push_back(dep);
+	}
+	return dlist;
+}
+
+vector<Dependency> eval_dependency(string corpus_path)
+{
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	g_idx2word = &idx2word;
 
-	Docs indexdocs(corpus_path);
 
-	map<int, int> cluster = loadCluster(data_path + "cluster_ep20.txt");
-	apply_clustering(indexdocs, cluster);
-	apply_cluster(idx2word, cluster);
-	//vector<Dependency> dependsList = PatternToDependency(indexdocs);
-	FrequentSet fs(data_path + "L2_head_sentence.txt");
-	vector<Dependency> dependsList = get_dependency(indexdocs, fs);
-	save_dependency(data_path + "dependency.index" , dependsList);
+	cout << "Loading clusters...";
+	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
+	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
+	MCluster mcluster;
+	mcluster.add_cluster(cluster1, 10000000);
+	mcluster.add_cluster(cluster2, 20000000);
 
+	cout << endl;
+
+	Docs docs(corpus_path, mcluster);
+	FrequentSet fs(data_path + "L2_mt_20_200.txt");
+	vector<Dependency> dependsList = get_dependency(docs, mcluster, fs);
+	save_dependency(data_path + "dependency.index", dependsList);
+	return dependsList;
+}
+
+void resolve_ommission(string corpus_path)
+{
 	cout << "Loading raw sentence" << endl;
 	ifstream fin(common_input + "bobae_raw_sentence.txt");
+	check_file(fin, common_input + "bobae_raw_sentence.txt");
 	vector<string> rawdoc;
 	string temp;
 	while (getline(fin, temp))
@@ -259,11 +299,20 @@ void resolve_ommission(string corpus_path)
 		rawdoc.push_back(temp);
 	}
 
+	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
+	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
+	MCluster mcluster;
+	mcluster.add_cluster(cluster1, 10000000);
+	mcluster.add_cluster(cluster2, 20000000);
 
+	Docs docs(corpus_path, mcluster);
+
+	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
+	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
 	cout << "Now resolve omission" << endl;
 	for (uint i = 1; i < docs.size(); i++)
 	{
-		set<int> ommision = FindOmission(docs[i], docs[i - 1], dependsList, idx2word, cluster);
+		set<int> ommision = FindOmission(docs[i], docs[i - 1], dependsList, idx2word, mcluster);
 		if (ommision.size() > 0)
 		{
 			cout << "--------------------------------------" << endl;

@@ -97,6 +97,11 @@ public:
 	bool has(T elem){
 		return (this->find(elem) != this->end());
 	}
+	void add(const vector<T>& v){
+		for (const T& item : v){
+			insert(item);
+		}
+	}
 };
 
 // trim from start
@@ -173,4 +178,38 @@ public:
 		}
 		(*this)[item] = (*this)[item] + 1;
 	}
+};
+
+static void check_file(ifstream& infile, string& path)
+{
+	if (!infile.good())
+	{
+		cout << "File not valid : " + path << endl;
+		exit(0);
+	}
+}
+
+
+static vector<int> vector_and_(vector<int> v1, vector<int> v2)
+{
+	vector<int> result;
+	// Two vector must be sorted
+	auto itr1 = v1.begin();
+	auto itr2 = v2.begin();
+	while (itr1 != v1.end() && itr2 != v2.end())
+	{
+		if (*itr1 < *itr2)
+			itr1++;
+		else if (*itr1 > *itr2)
+			itr2++;
+		else if (*itr1 == *itr2)
+		{
+			result.push_back(*itr1);
+			itr1++;
+			itr2++;
+		}
+		else
+			assert(false);
+	}
+	return result;
 };

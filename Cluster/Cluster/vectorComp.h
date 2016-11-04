@@ -37,6 +37,16 @@ bool contain(vector<T> big_set, vector<T> sub_set)
 	return match == sub_set.size();
 }
 
+template <typename T>
+bool contain(vector<T> big_set, T elem)
+{
+	for (T item : big_set)
+	{
+		if (item == elem)
+			return true;
+	}
+	return false;
+}
 
 
 bool sorted(vector<int> itemSet);

@@ -1,4 +1,5 @@
 #include "AM.h"
+#include "Cluster.h"
 
 void print_doc(Doc& doc, map<int,string>& idx2word)
 {
@@ -31,6 +32,36 @@ void Docs::init(vector<Doc>& docs)
 	}
 }
 
+void Docs::init2(vector<Doc>& docs, MCluster& mcluster)
+{
+	for (int i = 0; i < docs.size(); i++)
+	{
+		push_back(docs[i]);
+		for (int word : docs[i])
+		{
+			if (invIndex.find(word) == invIndex.end())
+			{
+				invIndex[word] = vector<int>();
+			}
+			invIndex[word].push_back(i);
+
+			vector<int> categories = mcluster.get_categories(word);
+			for (int category : categories){
+				if (invIndex.find(category) == invIndex.end())
+				{
+					invIndex[category] = vector<int>();
+				}
+				invIndex[category].push_back(i);
+			}
+		}
+	}
+	for (auto& key_value : invIndex)
+	{
+		sort(key_value.second);
+	}
+
+}
+
 void Docs::rebuild_index()
 {
 	invIndex.clear();
@@ -58,10 +89,11 @@ Docs::Docs(vector<Doc>& docs)
 }
 
 
-Docs::Docs(string path)
+Docs::Docs(string path, MCluster& mcluster)
 {
 	vector<Doc> rawDocs;
 	ifstream infile(path);
+	check_file(infile, path);
 	string line;
 	while (std::getline(infile, line))
 	{
@@ -78,7 +110,7 @@ Docs::Docs(string path)
 		sort(doc.begin(), doc.end());
 		rawDocs.push_back(doc);
 	}
-	init(rawDocs);
+	init2(rawDocs, mcluster);
 }
 
 int Docs::max_word_index() const{
@@ -233,28 +265,3 @@ uint Docs::count_occurence_without(int target, int except) const
 	return remain_occurence.size();
 }
 
-
-void apply_clustering(Docs& docs, map<int, int>& cluster)
-{
-
-	int cluster_prefix = 100000000;
-	if (docs.max_word_index() >= cluster_prefix)
-		cluster_prefix = docs.max_word_index() + 1;
-
-
-	ofstream fout("clustering.log");
-	fout << cluster_prefix;
-	fout.close();
-
-	for (Doc &doc : docs)
-	{
-		for (int& word : doc)
-		{
-			if (cluster.find(word) != cluster.end())
-			{
-				word = cluster[word] + cluster_prefix;
-			}
-		}
-	}
-	docs.rebuild_index();
-}
