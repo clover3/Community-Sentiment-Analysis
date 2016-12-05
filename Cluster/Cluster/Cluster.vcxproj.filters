@@ -25,6 +25,9 @@
     <Filter Include="Documentation">
       <UniqueIdentifier>{7d6fd0d0-bd4f-48af-a354-6d8e77c29265}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bat">
+      <UniqueIdentifier>{c5dde417-e32b-492d-865e-bf857e90b2d9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -94,5 +97,19 @@
     <Text Include="Document.txt">
       <Filter>Documentation</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="2run.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="4run.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="3run.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="2run -.bat">
+      <Filter>bat</Filter>
+    </None>
   </ItemGroup>
 </Project>

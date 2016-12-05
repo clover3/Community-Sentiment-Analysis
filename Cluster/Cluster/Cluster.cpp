@@ -591,6 +591,7 @@ vector<int> MCluster::get_words(int category) const
 
 bool MCluster::different(int cword1, int cword2) const
 {
+	
 	vector<int> v1, v2;
 	if (cword1 > 10000000)
 		v1 = get_words(cword1);
