@@ -13,6 +13,18 @@ IDX_TEXT_TYPE = 9
 IDX_TOKENS = 10
 
 
+class UTF8Recoder:
+    """
+    Iterator that reads an encoded stream and reencodes the input to UTF-8
+    """
+    def __init__(self, f, encoding):
+        self.reader = codecs.getreader(encoding)(f)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self.reader.next().encode("utf-8")
 
 def flatten(z):
     return [y for x in z for y in x]
@@ -22,9 +34,9 @@ def load_csv(path):
         return [line for line in csv.reader(f)]
 
 def load_csv_euc_kr(path):
-    with codecs.open(path, "rb", "cp949") as f:
+    with open(path, "rb") as f:
+        f = UTF8Recoder(f, "cp949")
         return [line for line in csv.reader(f)]
-
 
 def save_csv_euc_kr(data, path):
     with codecs.open(path, "wb", 'cp949') as f:
@@ -50,6 +62,19 @@ def contain_any(text, iterable):
 def parse_sentence_token(articles):
     sentence_list = flatten([article[IDX_TOKENS].split('|') for article in articles])
     result = [sentence.split('/') for sentence in sentence_list]
+
+    return result
+
+
+## returns list[Sentence] , Sentence
+def get_sentence_token(articles):
+    # list[list[String]]
+    sentence_list = [article[IDX_TOKENS].split('|') for article in articles]
+
+    result = []
+    for article in sentence_list:
+        result.append([raw_sentence.split('/') for raw_sentence in article])
+
     return result
 
 def parse_token(articles):
@@ -63,6 +88,15 @@ def parse_token(articles):
             print(e)
     return result
 
+
+def output_array(path, indexed_article):
+    fp= open(path, "w")
+
+    for article in indexed_article:
+        for token in article:
+            fp.write("{} ".format(token))
+        fp.write("\n")
+    fp.close()
 
 class CaseCounter:
     def __init__(self):
