@@ -171,6 +171,7 @@
     <Text Include="Document.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="1run.bat" />
     <None Include="2run -.bat" />
     <None Include="2run.bat" />
     <None Include="3run.bat" />

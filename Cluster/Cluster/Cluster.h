@@ -91,6 +91,7 @@ public:
 
 class Clustering
 {
+	static vector<vector<float>> init_dist(Embeddings* eb);
 public:
 	static Labels thresholdCluster(Embeddings* eb, float eps);
 	static Labels OneStepCluster(Embeddings* eb, float eps);
