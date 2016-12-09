@@ -96,6 +96,7 @@ public:
 	static Labels OneStepCluster(Embeddings* eb, float eps);
 	static Labels KMeans(Embeddings* eb, float eps, int k);
 	static Labels KMeans(Embeddings* eb, Centroids centroids, float eps, int k);
+	static vector<Labels> Hierarchial(Embeddings* eb, vector<float> eps);
 private:
 };
 

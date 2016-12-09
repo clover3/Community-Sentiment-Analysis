@@ -58,7 +58,7 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 
 	double lift = float(count_pattern) / sqrt(count_item *count_remain);
 
-	if (lift > 0.6 && probability - probability_without > 0.2)
+	if (lift > 0.55 )//  probability - probability_without > 0.2)
 	{
 		return true;
 	}
@@ -281,7 +281,7 @@ vector<Dependency> eval_dependency(string corpus_path)
 	cout << endl;
 
 	Docs docs(corpus_path, mcluster);
-	FrequentSet fs(data_path + "L2_mt_20_200.txt");
+	FrequentSet fs(data_path + "L2.txt");
 	vector<Dependency> dependsList = get_dependency(docs, mcluster, fs);
 	save_dependency(data_path + "dependency.index", dependsList);
 	return dependsList;

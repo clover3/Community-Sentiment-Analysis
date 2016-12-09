@@ -92,7 +92,7 @@ FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const Freq
 }
 
 
-FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2, uint ed2)
+FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2, uint ed2, const MCluster& mcluster)
 {
 	FrequentSet FS;
 	for (uint i = st1; i < ed1; i++)
@@ -101,7 +101,7 @@ FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2
 		{
 			int lastItem1 = l1[i][0];
 			int lastItem2 = l1[j][0];
-			if (lastItem1 < lastItem2)
+			if (lastItem1 < lastItem2 && mcluster.different(lastItem1, lastItem2))
 			{
 				ItemSet newset;
 				newset.push_back(lastItem1);
@@ -127,8 +127,8 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 	vector<ItemSet> l1_vector = vector<ItemSet>(L1.begin(), L1.end());
 	sort(l1_vector);
 	uint size = L1.size();
-	C2 = build_C2_sub(l1_vector, 0, size, 0, size);
-
+	C2 = build_C2_sub(l1_vector, 0, size, 0, size, mcluster);
+	/*
 	for (ItemSet set1 : L1)
 	{
 		for (ItemSet set2 : L1)
@@ -144,7 +144,8 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 				C2.insert(newset);
 			}
 		}
-	}
+	}*/
+
 	return C2;
 }
 
