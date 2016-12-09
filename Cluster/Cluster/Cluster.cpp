@@ -419,7 +419,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	return labels;
 }
 
-void eval_dist(int from, int to, vector<vector<float>>& dist, Embeddings* eb)
+void eval_dist(int from, int to, float** dist, Embeddings* eb)
 {
 	for (int i = from; i < to; i++)
 	{
@@ -431,22 +431,24 @@ void eval_dist(int from, int to, vector<vector<float>>& dist, Embeddings* eb)
 	}
 }
 
-vector<vector<float>> Clustering::init_dist(Embeddings* eb)
+float** Clustering::init_dist(Embeddings* eb)
 {
-	vector<vector<float>> dist;
+    float** dist ;
 	int nNode = eb->size();
+    dist = new float*[nNode];
 	for (int i = 0; i < nNode; i++)
 	{
-		dist.push_back(vector<float>(nNode));
+        dist[i] = new float[nNode];
 	}
 
-	cout << "evaluating distance...";
+	cout << "evaluating distance..." << flush;
 
 	int nThread = std::thread::hardware_concurrency();
 	int range = nNode / nThread;
 	
-	for (int i = 0 ; i < nThread; i++)
-	{
+    for (int i = 0 ; i < nThread; i++)
+    {
+        cout << "thread #" << i << endl;
 		int from = i * range;
 		int to = (i + 1) * range; 
 		async(launch::async, eval_dist, from, to, dist, eb);
@@ -469,7 +471,7 @@ vector<Labels> Clustering::Hierarchial(Embeddings* eb, vector<float> epss)
 	auto engine = std::default_random_engine{};
 
 	// eval all pair distance
-	vector<vector<float>> dist = init_dist(eb);
+	float** dist = init_dist(eb);
 
 	for (float eps : epss)
 	{
