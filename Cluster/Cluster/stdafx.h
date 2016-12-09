@@ -37,7 +37,11 @@ static const std::string slash = "/";
 #endif
 
 static const string data_path = "data"+ slash;
+#ifdef WINVS
 static const string common_input = ".." + slash + ".." + slash +"input" + slash;
+#else
+#define common_input (".." + slash + ".." + slash +"input" + slash)
+#endif
 
 template <typename T, typename U>
 U foldLeft(const std::vector<T>& data,
@@ -97,12 +101,16 @@ public:
 	bool has(T elem){
 		return (this->find(elem) != this->end());
 	}
-	void add(const vector<T>& v){
-		for (const T& item : v){
-			insert(item);
-		}
-	}
+    void add(const vector<T>& v);
+
 };
+
+template <typename T>
+void Set2<T>::add(const vector<T>& v){
+    for (const T& item : v){
+        this->insert(item);
+    }
+}
 
 // trim from start
 static inline std::string &ltrim(std::string &s) {
@@ -180,7 +188,7 @@ public:
 	}
 };
 
-static void check_file(ifstream& infile, string& path)
+static void check_file(ifstream& infile, const string& path)
 {
 	if (!infile.good())
 	{
