@@ -433,6 +433,7 @@ void eval_dist(int from, int to, float** dist, Embeddings* eb)
 
 float** Clustering::init_dist(Embeddings* eb)
 {
+	cout << "init_dist ENTRY" << endl;
     float** dist ;
 	int nNode = eb->size();
     dist = new float*[nNode];
@@ -441,14 +442,14 @@ float** Clustering::init_dist(Embeddings* eb)
         dist[i] = new float[nNode];
 	}
 
-	cout << "evaluating distance..." << flush;
 
 	int nThread = std::thread::hardware_concurrency();
 	int range = nNode / nThread;
+	cout << "evaluating distance... nThread=" << nThread << endl << flush;
 	
     for (int i = 0 ; i < nThread; i++)
     {
-        cout << "thread #" << i << endl;
+        cout << "thread #" << i << endl <<flush;
 		int from = i * range;
 		int to = (i + 1) * range; 
 		async(launch::async, eval_dist, from, to, dist, eb);
@@ -488,12 +489,14 @@ vector<Labels> Clustering::Hierarchial(Embeddings* eb, vector<float> epss)
 		// while node left
 		while (remains.size() > 0)
 		{
+			cout << remains.size() << " node remains " << endl;
 			// pick one
 			// assign nearby to 
 			int core = remains.front();
 
 			for (int other : remains){
-				if ( dist[other][core] < eps )
+				float d = dist[other][core];
+				if ( d < eps )
 				{
 					labels[other] = core;
 				}
@@ -660,7 +663,8 @@ void cluster_embedding()
 	string path = common_input + "korean_word2vec_wv_300_euckr.txt";
 	Embeddings* eb = loadEmbeddings(path.c_str());
 
-	vector<float> epss = { 10, 50, 100, 200, 500, 1000, 2000 };
+	//vector<float> epss = { 10, 50, 100, 200, 500, 1000, 2000 };
+	vector<float> epss = { 2000, 1000, 500, 100, 10 };
 	
 	vector<Labels> labels = Clustering::Hierarchial(eb, epss);
 
