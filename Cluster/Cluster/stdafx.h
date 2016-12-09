@@ -18,6 +18,7 @@
 #include <cctype>
 #include <locale>
 #include <stdio.h>
+#include <random>
 
 #ifdef WINVS
 using uint = size_t;

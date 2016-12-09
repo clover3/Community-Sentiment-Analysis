@@ -419,7 +419,63 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	return labels;
 }
 
+vector<Labels> Clustering::Hierarchial(Embeddings* eb, vector<float> epss)
+{
+	// init labels
+	size_t nNode = eb->size();
+	
+	vector<Labels> labelVector;
+	auto engine = std::default_random_engine{};
 
+	// eval all pair distance
+	vector<vector<float>> dist;
+	for (int i = 0; i < nNode; i++)
+	{
+		dist.push_back(vector<float>(nNode));
+	}
+
+	for (int i = 0; i < nNode; i++)
+	{
+		for (int j = 0; j < nNode; j++)
+		{
+			dist[i][j] = dist_euclidean((*eb)[i], (*eb)[j]);
+		}
+	}
+
+	for (float eps : epss)
+	{
+		Labels labels(nNode);
+		vector<int> nodes;
+		for (int i = 0; i < nNode; i++)
+			nodes.push_back(i);
+
+		std::shuffle(std::begin(nodes), std::end(nodes), engine);
+
+		list<int>  remains(nodes.begin(), nodes.end());
+
+		// while node left
+		while (remains.size() > 0)
+		{
+			// pick one
+			// assign nearby to 
+			int core = remains.front();
+
+			for (int other : remains){
+				if ( dist[other][core] < eps )
+				{
+					labels[other] = core;
+				}
+			}
+			auto isInEps = [dist, core, eps](int target){ return dist[core][target] < eps;  };
+			remove_if(remains.begin(), remains.end(), isInEps);
+		}
+		
+		labelVector.push_back(labels);
+	}
+
+	// return something
+	return labelVector;
+}
 
 // voca_id -> cluster_id
 map<int, int> loadCluster(string path)
@@ -478,18 +534,18 @@ void display(Labels& label, Embeddings* eb)
 
 }
 
-void output(Labels& label, Embeddings* eb)
+void output(Labels& label, size_t nNode, string path)
 {
 	set<int> distinctLabel(label.begin(), label.end());
 	map<int, vector<int>> group;
 
-	for (unsigned int i = 0; i < eb->size(); i++)
+	for (unsigned int i = 0; i < nNode; i++)
 	{
 		int l = label[i];
 		group[l].push_back(i);
 	}
 
-	ofstream fout(data_path + "output.txt");
+	ofstream fout(path);
 	for (auto & v : group)
 	{
 		if (v.second.size() > 1)
@@ -540,9 +596,9 @@ parameter :
 300 : 30 -> two broad??
 */
 
-void cluster_embedding()
+void cluster_kmeans()
 {
-	printf("cluster_embedding ENTRY\n");
+	printf("cluster_kmeans ENTRY\n");
 	string path = common_input + "korean_word2vec_wv_300_euckr.txt";
 	Embeddings* eb = loadEmbeddings(path.c_str());
 
@@ -556,7 +612,7 @@ void cluster_embedding()
 
 	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	Labels label = Clustering::KMeans(eb, eps, k); 
-	output(label, eb);
+	output(label, eb->size(), data_path + "output.txt");
 	
 	// Convert embedding index to voca index
 	save_cluster(data_path + "cluster.txt", *eb, word2idx, label);
@@ -564,6 +620,24 @@ void cluster_embedding()
 	display(label, eb);
 
 	delete eb;
+}
+
+void cluster_embedding()
+{
+	printf("cluster_embedding ENTRY\n");
+	string path = common_input + "korean_word2vec_wv_300_euckr.txt";
+	Embeddings* eb = loadEmbeddings(path.c_str());
+
+	vector<float> epss = { 10, 50, 100, 200, 500, 1000, 2000 };
+	
+	vector<Labels> labels = Clustering::Hierarchial(eb, epss);
+
+	for (int i = 0; i < labels.size(); i++)
+	{
+		string path = data_path + "cluster_" + std::to_string(i) + " .txt";
+		output(labels[i], eb->size(), path);
+	}
+	
 }
 
 
