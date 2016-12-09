@@ -435,9 +435,9 @@ float** Clustering::init_dist(Embeddings* eb)
 {
 	cout << "init_dist ENTRY" << endl;
     float** dist ;
-	int nNode = eb->size();
+	size_t nNode = eb->size();
     dist = new float*[nNode];
-	for (int i = 0; i < nNode; i++)
+	for (size_t i = 0; i < nNode; i++)
 	{
         dist[i] = new float[nNode];
 	}
@@ -455,7 +455,7 @@ float** Clustering::init_dist(Embeddings* eb)
 		async(launch::async, eval_dist, from, to, dist, eb);
 	}
 
-	for (int i = 0; i < nNode; i++)
+	for (size_t i = 0; i < nNode; i++)
 		dist[i][i] = 0;
 
 	cout << " Done" << endl;
