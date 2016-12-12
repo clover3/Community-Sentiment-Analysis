@@ -21,7 +21,7 @@ Embeddings* loadEmbeddings(const char* path)
 	string str;
 	fscanf_s(fp, "%d %d", &nEntry, &nDim);
 
-	//nEntry = 10000;
+//	nEntry = 10000;
 	printf("Entry :%d \nDimension : %d\n", nEntry, nDim);
 	ptr->resize(nEntry);
 
@@ -419,7 +419,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	return labels;
 }
 
-void eval_dist(int from, int to, float** dist, Embeddings* eb)
+int eval_dist(int from, int to, float** dist, Embeddings* eb)
 {
 	for (int i = from; i < to; i++)
 	{
@@ -429,6 +429,7 @@ void eval_dist(int from, int to, float** dist, Embeddings* eb)
 			dist[j][i] = dist[i][j];
 		}
 	}
+    return 0;
 }
 
 float** Clustering::init_dist(Embeddings* eb)
@@ -447,15 +448,19 @@ float** Clustering::init_dist(Embeddings* eb)
 	int range = nNode / nThread;
 	cout << "evaluating distance... nThread=" << nThread << endl << flush;
 	
+    vector<future<int>> flist;
     for (int i = 0 ; i < nThread; i++)
     {
-        cout << "thread #" << i << endl <<flush;
 		int from = i * range;
 		int to = (i + 1) * range; 
-		async(launch::async, eval_dist, from, to, dist, eb);
+		flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
 	}
 
-	for (size_t i = 0; i < nNode; i++)
+    for(auto &f : flist){
+        f.get();
+    }
+
+	for (int i = 0; i < nNode; i++)
 		dist[i][i] = 0;
 
 	cout << " Done" << endl;
@@ -489,20 +494,19 @@ vector<Labels> Clustering::Hierarchial(Embeddings* eb, vector<float> epss)
 		// while node left
 		while (remains.size() > 0)
 		{
-			cout << remains.size() << " node remains " << endl;
 			// pick one
 			// assign nearby to 
 			int core = remains.front();
 
 			for (int other : remains){
 				float d = dist[other][core];
-				if ( d < eps )
+				if ( d < eps + 0.1 )
 				{
 					labels[other] = core;
 				}
 			}
-			auto isInEps = [dist, core, eps](int target){ return dist[core][target] < eps;  };
-			remove_if(remains.begin(), remains.end(), isInEps);
+			auto isInEps = [dist, core, eps](int target){ return dist[core][target] < eps +0.1;  };
+            remains.erase(remove_if(remains.begin(), remains.end(), isInEps), remains.end());
 		}
 		
 		labelVector.push_back(labels);
@@ -535,7 +539,7 @@ map<int, int> loadCluster(string path)
 }
 
 
-void display(Labels& label, Embeddings* eb)
+void display(string path, Labels& label, Embeddings* eb)
 {
 	set<int> distinctLabel(label.begin(), label.end());
 	map<int, vector<int>> group;
@@ -549,7 +553,7 @@ void display(Labels& label, Embeddings* eb)
 	int nNonSingle = 0;
 
 
-	ofstream fout(data_path + "cluster_text.txt");
+	ofstream fout(path);
 	for (auto & v : group)
 	{
 		if (v.second.size() > 1)
@@ -652,7 +656,7 @@ void cluster_kmeans()
 	// Convert embedding index to voca index
 	save_cluster(data_path + "cluster.txt", *eb, word2idx, label);
 	
-	display(label, eb);
+	display(data_path+ "cluster_t.txt", label, eb);
 
 	delete eb;
 }
@@ -665,13 +669,18 @@ void cluster_embedding()
 
 	//vector<float> epss = { 10, 50, 100, 200, 500, 1000, 2000 };
 	vector<float> epss = { 2000, 1000, 500, 100, 10 };
-	
+
+	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	vector<Labels> labels = Clustering::Hierarchial(eb, epss);
 
 	for (int i = 0; i < labels.size(); i++)
 	{
-		string path = data_path + "cluster_" + std::to_string(i) + " .txt";
-		output(labels[i], eb->size(), path);
+		//string path_i = data_path + "output_" + std::to_string(i) + ".txt";
+		//output(labels[i], eb->size(), path_i);
+		string path_c = data_path + "cluster_" + std::to_string(i) + ".txt";
+		save_cluster(path_c, *eb, word2idx, labels[i]);
+		string path_d = data_path + "cluster_t_" + std::to_string(i) + ".txt";
+		display(path_d, labels[i], eb);
 	}
 	
 }
