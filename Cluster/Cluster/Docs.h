@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "word2idx.h"
 #include "ItemSet.h"
+#include "mcluster.h"
 
 using Doc = vector <int>;
 

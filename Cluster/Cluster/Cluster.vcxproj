@@ -149,9 +149,11 @@
     <ClCompile Include="Cluster.cpp" />
     <ClCompile Include="Dependency.cpp" />
     <ClCompile Include="Docs.cpp" />
+    <ClCompile Include="embedding.cpp" />
     <ClCompile Include="FrequentSet.cpp" />
     <ClCompile Include="ItemSet.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mcluster.cpp" />
     <ClCompile Include="vectorComp.cpp" />
     <ClCompile Include="word2idx.cpp" />
   </ItemGroup>
@@ -160,8 +162,10 @@
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="Dependency.h" />
     <ClInclude Include="Docs.h" />
+    <ClInclude Include="embedding.h" />
     <ClInclude Include="FrequentSet.h" />
     <ClInclude Include="ItemSet.h" />
+    <ClInclude Include="mcluster.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="timeAux.h" />
     <ClInclude Include="vectorComp.h" />
