@@ -4,9 +4,6 @@ import threading
 
 
 from clover_lib import *
-from nltk.tokenize import RegexpTokenizer
-import konlpy.tag
-from konlpy.utils import pprint
 import gensim.models
 import itertools
 import random
@@ -29,6 +26,23 @@ LDA_PICKLE_PATH = "model\\lda"
 
 TFIDF_PICKLE_PATH = "model\\tfidf"
 TFIDF_DICT_PICKLE_PATH = 'model\\tfidf.dict'
+
+
+class Option(object):
+    def __init__(self, o_input, isFail= False):
+        self.fFail = isFail
+        self.obj = o_input
+
+    def isFail(self):
+        return self.fFail
+
+    def get(self):
+        return self.obj
+
+    @staticmethod
+    def fail():
+        return Option(None, True)
+
 
 
 class TFIDFAnalyzer:
@@ -116,7 +130,7 @@ class HeadNotFoundError(Exception):
         return repr(self.value)
 
 
-def texts_by(texts, user):
+def texts_by(texts, user): # type : (List(text), string) -> List(text)
     result = []
     for text in texts:
         if text[IDX_AUTHOR_ID] == user:
@@ -126,7 +140,11 @@ def texts_by(texts, user):
     return result
 
 
-def resolve_target(data):
+def get_thread_article_id(post):
+    return int(post[IDX_THREAD_ID]), int(post[IDX_ARTICLE_ID])
+
+
+def resolve_target_and_eval(data):
     target_dict = {}
 
     lda_model = LDAAnalyzer()
@@ -157,102 +175,135 @@ def resolve_target(data):
     def resolve_thread(texts):
         thread_dict = {}
 
-        head_article_0 = -1
-        head_article_1 = -1
+        head_article_0 = None  ## article stack : this is article
+        head_article_1 = None  ## article stack : this is comment
 
-        def get_head_article(article_id, text_type):
-            if text_type == 0 :
-                if head_article_0 == -1:
-                    return -1
-                return head_article_0
-            elif text_type == 1 :
-                if head_article_1 == -1:
-                    return -1
-                return head_article_1
-            else :
-                raise ValueError("invalid type : " + str(text_type))
+        # text_type : int
+        def get_current_article():
+            return head_article_0
+
+        def get_current_comment():
+            return head_article_1
 
         users = set()
-        type2_count = 0
-        prev = []
+        prev_coc = []
 
-        for article in texts:
-            target_id = -1
-            article_id = article[IDX_ARTICLE_ID]
-            if article[IDX_TEXT_TYPE] == '0':                ### Case 1
-                target_id = 0
-                type2_count = 0
-                head_article_0 = article_id
-                case_counter.add_count(1)
-            elif article[IDX_TEXT_TYPE] == '1':             ### Case 2
-                target_id = get_head_article(article_id, 0)
-                type2_count = 0
-                head_article_1 = article_id
-                prev = [article]
-                case_counter.add_count(2)
-            elif article[IDX_TEXT_TYPE] == '2':
-                def handle_case3():
-                    if type2_count == 0:
-                        case_counter.add_count(3)
-                        return get_head_article(article_id, 1)
-                    else:
-                        return -1
-                def handle_case4():
-                    id = -1
-                    user_ref = contain_any(article[IDX_CONTENT], users)
-                    if len(user_ref) > 0:
-                        try:
-                            case_counter.add_count(4)
-                            referee = texts_by(prev, user_ref)[-1]
-                            id = referee[IDX_ARTICLE_ID]
-                        except:
-                            "None"
+        for post in texts:
+            if post[IDX_TEXT_TYPE] not in ['0','1','2']:
+                raise ValueError("Unexpected Case : " + str(post[IDX_TEXT_TYPE]))
 
-                    return id
-                def handle_case5():
-                    user = article[IDX_AUTHOR_ID]
-                    list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
-                    cadidate_users = set(map(lambda x:x[IDX_AUTHOR_ID], list_filtered))
-                    if len(cadidate_users) == 1:
-                        case_counter.add_count(5)
-                        return list_filtered[-1][IDX_ARTICLE_ID]
-                    else :
-                        return -1
+            # update stack info
+            if post[IDX_TEXT_TYPE] == '0':
+                head_article_0 = post
+                prev_coc = []
+                users = set()
+            elif post[IDX_TEXT_TYPE] == '1':
+                head_article_1 = post
+                prev_coc = []
 
-                target_id = handle_case3()       ### Case 3
-                if target_id == -1 :
-                    target_id = handle_case4()   ### Case 4
-                if target_id == -1 :
-                    target_id = handle_case5()
+            def handle_case1():
+                if post[IDX_TEXT_TYPE] == '0':  ### Case 1
+                    case_counter.add_count(1)
+                    return Option((0,0))
+                else:
+                    return Option.fail()
 
-                type2_count += 1
-                prev.append(article)
-            else:
-                raise ValueError("Unexpected Case : " + str(article[IDX_TEXT_TYPE]))
+            def handle_case2():
+                if post[IDX_TEXT_TYPE] == '1':  ### Case 2
+                    case_counter.add_count(2)
+                    return Option(get_thread_article_id(get_current_article()))
+                else:
+                    return Option.fail()
 
-            if target_id == -1:
+            def handle_case3():  # () -> Option((int,int))
+                if post[IDX_TEXT_TYPE] != '2':
+                    return Option.fail()
+
+                if len(prev_coc) == 0 :
+                    case_counter.add_count(3)
+                    if get_current_comment() is None:
+                        return Option((0,0))
+                    return Option(get_thread_article_id(get_current_comment()))
+                else:
+                    return Option.fail()
+
+            def handle_case4():
+                if post[IDX_TEXT_TYPE] != '2':
+                    return Option.fail()
+                id = Option.fail()
+                user_ref = contain_any(post[IDX_CONTENT], users)
+                if len(user_ref) > 0:
+                    try:
+                        case_counter.add_count(4)
+                        candidates = list(prev_coc)
+                        if get_current_comment() is not None:
+                            candidates.insert(0, get_current_comment())
+                        referee = texts_by(candidates, user_ref)[-1]  # type : text
+                        id = Option(get_thread_article_id(referee))
+                    except:
+                        "None"
+                return id
+
+            def handle_case5():
+                if post[IDX_TEXT_TYPE] != '2':
+                    return Option.fail()
+
+                user = post[IDX_AUTHOR_ID]
+                candidates = list(prev_coc)
+
+                if get_current_comment() is not None:
+                    candidates.insert(0, get_current_comment())
+
+                list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, candidates))
+                candidate_users = set(map(lambda x: x[IDX_AUTHOR_ID], list_filtered))
+                if len(candidate_users) == 1:
+                    text = list_filtered[-1]
+                    case_counter.add_count(5)
+                    return Option((text[IDX_THREAD_ID], text[IDX_ARTICLE_ID]))
+                else:
+                    return Option.fail()
+
+            def handle_case6():
+                counter.fail()
                 try:
-                    if len(prev) == 0:
+                    if len(prev_coc) == 0:
                         raise Exception("list must not be empty")
-                    user = article[IDX_AUTHOR_ID]
-                    list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, prev))
+                    user = post[IDX_AUTHOR_ID]
+                    candidates = list(prev_coc)
+                    if get_current_comment():
+                        candidates.insert(0, get_current_comment())
+
+                    list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, candidates))
                     if len(list_filtered) == 0:
                         raise Exception("Not found")
 
                     case_counter.add_count(6)
-                    target = find_target(prev, article)
-                    target_id = target[IDX_ARTICLE_ID]
-                except Exception as e :
+                    target = find_target(candidates, post)
+                    return Option(get_thread_article_id(target))
+                except Exception as e:
                     print(e)
-                    target_id = -1
+                    return Option.fail()
 
-                target_dict[article_id] = target_id
-                counter.fail()
+            ret = handle_case1()       ### Case 3
+            if ret.isFail():
+                ret = handle_case2()
+            if ret.isFail():
+                ret = handle_case3()
+            if ret.isFail():
+                ret = handle_case4()
+            if ret.isFail():
+                ret = handle_case5()
+            if ret.isFail():
+                ret = handle_case6()
             else:
-                target_dict[article_id] = target_id
-                counter.suc()
+                counter.fail()
 
-            users.add(article[IDX_AUTHOR_ID])
+            target_dict[get_thread_article_id(post)] = ret.get()
+
+            if post[IDX_TEXT_TYPE] == '2':
+                prev_coc.append(post)
+
+            users.add(post[IDX_AUTHOR_ID])
 
         return thread_dict
 
@@ -393,17 +444,112 @@ def analyze_thread(counter_lda, counter_tfidf, counter_blind, lda_model, tfidf_m
     except Exception as e :
         print(e)
 
+def validate(data): # type : List() -> ()
+    for entry in data:
+        assert(int(entry[IDX_ARTICLE_ID]) > 0)
+        assert(int(entry[IDX_THREAD_ID]) > 0 )
+        ttype = entry[IDX_TEXT_TYPE]
+        assert (ttype =='0' or ttype == '1' or ttype == '2')
+        assert(type(entry[IDX_TOKENS])==type([1,2,3]))
+
 def test_bobae():
     cursor = 0
     size = 1000
-    data = load_csv_euc_kr("input\\bobae_car_tkn.csv")[cursor:cursor + size]
+    data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+
     data_token_parsed = parse_token(data)
-    resolve_target(data_token_parsed)
+    validate(data_token_parsed)
+    resolve_target_and_eval(data_token_parsed)
+
+
+IDX_R_THREAD = 1
+IDX_R_ARTICLE = 2
+IDX_R_KEYWORD = 3
+IDX_R_LABEL = 4
+
+def validate_a_contain_b(a, b):
+    a_set = set([get_thread_article_id(line) for line in a ])
+
+    def get_thread_article_id_r(post):
+        return int(post[IDX_R_THREAD]), int(post[IDX_R_ARTICLE])
+
+    allTrue = all(get_thread_article_id_r(elem) in a_set for elem in b)
+
+    assert allTrue
+
+
+def load_idx2word(path):
+    data = codecs.open(path, "r", encoding="cp949").readlines()
+    idx2word = dict()
+    word2idx = dict()
+    for line in data:
+        idx = int(line.split()[0])
+        word = (line.split())[1]
+        idx2word[idx] = word
+        word2idx[word] = idx
+    return idx2word, word2idx
+
+
+def load_rules(path, word2idx):
+    data = codecs.open(path, "r", encoding="cp949").readlines()
+
+    def transform(line):
+        item = int(line.split()[0])
+        condition = int(line.split())[1]
+        return item,condition
+
+    return [transform(line) for line in data]
+
+
+def to_indexed_string(tokens, word2idx):
+    index_tokens = [word2idx[word] for word in tokens]
+    return index_tokens.join(" ")
+
+
+def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (int,int)) -> List(String)
+    data_dic = dict() # Dict( (int,int) -> text )
+
+    for post in data:
+        index = get_thread_article_id(post)
+        data_dic[index] = post
+
+    def post2pair_str(post):
+        index = get_thread_article_id(post)
+        related_index = related_dic[index]
+        out_str = to_indexed_string(post[IDX_TOKENS], word2idx)
+        if related_index == (0,0):
+            None
+        else :
+            related_post = data_dic[related_index] # text
+            post_fix = to_indexed_string(related_post[IDX_TOKENS], word2idx)
+            out_str += (" - " + post_fix)
+
+    return [post2pair_str(post) for post in data]
+
+
+def process_bobae():
+    cursor = 0
+    size = 100000
+    data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+
+    data_token_parsed = parse_token(data)
+    validate(data_token_parsed)
+    related_dic = resolve_target_and_eval(data_token_parsed)
+
+    label_path = "..\\input\\corpus_samba.csv"
+    labels = load_csv(label_path)
+
+    validate_a_contain_b(data_token_parsed, labels)
+    idx2word, word2idx = load_idx2word("..\\input\\idx2word")
+
+    ###  Sentence 1 - Related Sentence N
+    str_list = extract_pair(data_token_parsed, related_dic, word2idx)
+    output_str_list("..\\input\\related.index", str_list)
 
 if __name__ == '__main__':
     freeze_support()
     #test_on_guldang()
 
-    test_bobae()
+    process_bobae()
 
 #create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
