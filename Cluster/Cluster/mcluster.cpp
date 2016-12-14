@@ -26,12 +26,12 @@ bool MCluster::different(int cword1, int cword2) const
 {
 
 	vector<int> v1, v2;
-	if (cword1 > 10000000)
+	if (cword1 > TEN_MILLION)
 		v1 = get_words(cword1);
 	else
 		v1.push_back(cword1);
 
-	if (cword2 > 10000000)
+	if (cword2 > TEN_MILLION)
 		v2 = get_words(cword2);
 	else
 		v2.push_back(cword2);

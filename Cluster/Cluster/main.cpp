@@ -12,7 +12,14 @@ int main(int argc, char *argv[])
 	int command;
 	if (argc == 1)
 	{
-		cout << "No argument given. Exit" << endl;
+		cout << "No argument given." << endl;
+		cout << "---- Usage -----" << endl;
+		cout << " ./cluster [command] [corpus_path] " << endl;
+		cout << " Commands " << endl;
+		cout << "  1 : run cluster_embedding. Embedding path is hard coded " << endl;
+		cout << "  2 : run find_frequent_pattern. " << endl;
+		cout << "  3 : run eval_dependency. " << endl;
+		cout << "  4 : run resolve_ommission. " << endl;
 		exit(0);
 	}
 	

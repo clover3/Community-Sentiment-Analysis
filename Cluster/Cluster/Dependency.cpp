@@ -1,6 +1,7 @@
 #include "Dependency.h"
 #include <math.h>
 #include "Cluster.h"
+#include <fstream>
 
 bool ignore_pattern(ItemSet itemSet)
 {
@@ -33,9 +34,48 @@ int find_match(int i, vector<string>& rawdoc, Doc doc, Idx2Word& idx2word)
 }
 
 Idx2Word* g_idx2word;
-
+function<string(int)> lambda_idx2word = [](int idx){ return string("NULL");  };
 
 bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
+{
+	ItemSet remaining = pattern - item;
+
+	uint total = docs.size();
+	// Pattern = item + remaining
+	uint count_pattern = docs.count_occurence(pattern);
+	uint count_remain = docs.count_occurence(remaining);
+	uint count_item = docs.count_occurence_single(item);
+	/*
+	float probability = float(count_pattern) / float(count_remain);
+	// P(item|remaining) = Count(pattern) / Count(remaining)
+
+	int remain_item = remaining[0];
+	uint count_item_without_remain = docs.count_occurence_without(item, remain_item);
+	uint count_without_remain = docs.count_occurence_without(remain_item);
+	float probability_not = float(count_item_without_remain) / float(count_without_remain);
+	// P(item|~remaining) = Count(item & ~remaining) / Count(~remaining)
+
+	uint count_remain_except = docs.count_occurence_except(remaining, item);
+	float probability_without = float(count_remain_except) / float(count_remain);
+	// P(~item|remaining) = Count(~item & remaining) / Count(remaining)
+	 */
+	double p_ir = float(count_pattern) / total;
+	double p_i = float(count_item) / total;
+	double p_r = float(count_remain) / total;
+
+	double lift = p_ir / (p_i *p_r);
+
+	if (lift > 3 )//  probability - probability_without > 0.2)
+	//if (probability / probability_without > 2)
+	{
+		//cout << lift << " " << p_ir << " " << p_i << " " << p_r << endl;
+		return true;
+	}
+	else
+		return false;
+}
+
+void log_is_dependent(const int item, const ItemSet& pattern, const Docs& docs, function<string(int)> toStr, ofstream& out)
 {
 	ItemSet remaining = pattern - item;
 
@@ -58,12 +98,44 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 
 	double lift = float(count_pattern) / sqrt(count_item *count_remain);
 
-	if (lift > 0.55 )//  probability - probability_without > 0.2)
+	out << toStr(item) << "|" << toStr(remain_item) << endl
+		<< " Lift=" << lift << endl
+		<< "P(item|remain)=" << probability << endl
+		<< "P(item|~remaining)=" << probability_not << endl
+		<< "P(~item|remaining)=" << probability_without << endl;
+}
+
+vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& fs)
+{
+	cout << "Calculating Dependencies" << endl;
+	vector<ItemSet> patterns;
+	patterns.reserve(fs.size());
+
+	for (ItemSet pattern : fs)
 	{
-		return true;
+		patterns.push_back(pattern);
 	}
-	else
-		return false;
+
+	ofstream fstream("depend.log");
+
+	vector<Dependency> dependsList;
+	for (auto pattern : patterns)
+	{
+		//  pick one item.
+		for (int item : pattern)
+		{
+			ItemSet remaining = pattern - item;
+			//log_is_dependent(item, pattern, docs, lambda_idx2word, fstream);
+			if (is_dependent(item, pattern, docs))
+			{
+				Dependency dep(item, remaining, 0);
+				dependsList.push_back(dep);
+				dep.print(lambda_idx2word);
+			}
+		}
+	}
+
+	return dependsList;
 }
 
 vector<Dependency> get_dependency_mt(Docs& docs, FrequentSet& fs)
@@ -77,52 +149,10 @@ vector<Dependency> get_dependency_mt(Docs& docs, FrequentSet& fs)
 		patterns.push_back(pattern);
 	}
 
-	function<vector<Dependency>(ItemSet)> check = 
+	function<vector<Dependency>(ItemSet)> check =
 		[docs](ItemSet pattern)
 	{
 		vector<Dependency> dependsList;
-		//  pick one item.
-		for (int item : pattern)
-		{
-			for (int item : pattern)
-			{
-				ItemSet remaining = pattern - item;
-				if (is_dependent(item, pattern, docs))
-				{
-					Dependency dep(item, remaining, 0);
-					dependsList.push_back(dep);
-					dep.print(*g_idx2word);
-				}
-			}
-		}
-		return dependsList;
-	};
-	
-	vector<vector<Dependency>> r_2d = parallelize(patterns, check);
-
-	vector<Dependency> dependsList; 
-	for (auto v : r_2d){
-		vector_add(dependsList, v);
-	}
-
-	return dependsList;
-}
-
-
-vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& fs)
-{
-	cout << "Calculating Dependencies" << endl;
-	vector<ItemSet> patterns;
-	patterns.reserve(fs.size());
-
-	for (ItemSet pattern : fs)
-	{
-		patterns.push_back(pattern);
-	}
-
-	vector<Dependency> dependsList;
-	for (auto pattern : patterns)
-	{
 		//  pick one item.
 		for (int item : pattern)
 		{
@@ -131,9 +161,17 @@ vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& f
 			{
 				Dependency dep(item, remaining, 0);
 				dependsList.push_back(dep);
-				dep.print(*g_idx2word);
+				//dep.print(lambda_idx2word);
 			}
 		}
+		return dependsList;
+	};
+
+	vector<vector<Dependency>> r_2d = parallelize(patterns, check);
+
+	vector<Dependency> dependsList;
+	for (auto v : r_2d){
+		vector_add(dependsList, v);
 	}
 
 	return dependsList;
@@ -270,19 +308,47 @@ vector<Dependency> eval_dependency(string corpus_path)
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	g_idx2word = &idx2word;
 
-
 	cout << "Loading clusters...";
-	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
-	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
-	MCluster mcluster;
-	mcluster.add_cluster(cluster1, 10000000);
-	mcluster.add_cluster(cluster2, 20000000);
+	vector<string> cluster_path = { "cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
+		                             "cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt" };
 
-	cout << endl;
+	MCluster mcluster;
+	mcluster.add_clusters(cluster_path);
+
+	lambda_idx2word = [mcluster, idx2word](int idx){
+		if (idx > TEN_MILLION)
+		{
+			vector<int> idxs = mcluster.get_words(idx);
+			size_t sublen = min(idxs.size(), (size_t)10);
+			vector<int> subwords(idxs.begin(), idxs.begin() + sublen);
+			function<string(int)> mapper = [idx2word](const int idx){
+				auto token = idx2word.find(idx);
+				if (token != idx2word.end()){
+					string word = token.operator*().second;
+					return word;
+				}
+				else
+					return string("null"); 
+			};
+			vector<string> words = mapf(subwords, mapper);
+			string ret = "g[";
+			for (auto word : words)
+				ret += string(word + ",");
+			ret += "]";
+			return ret;
+		}
+		else
+		{
+			string ret = idx2word.find(idx).operator*().second;
+			return ret;
+		}
+	};
+
+	cout << "done" << endl;
 
 	Docs docs(corpus_path, mcluster);
 	FrequentSet fs(data_path + "L2.txt");
-	vector<Dependency> dependsList = get_dependency(docs, mcluster, fs);
+	vector<Dependency> dependsList = get_dependency_mt(docs, fs);
 	save_dependency(data_path + "dependency.index", dependsList);
 	return dependsList;
 }
@@ -299,18 +365,16 @@ void resolve_ommission(string corpus_path)
 		rawdoc.push_back(temp);
 	}
 
-	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
-	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
+	vector<string> cluster_path = { "cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt" };
 	MCluster mcluster;
-	mcluster.add_cluster(cluster1, 10000000);
-	mcluster.add_cluster(cluster2, 20000000);
+	mcluster.add_clusters(cluster_path);
 
 	Docs docs(corpus_path, mcluster);
 
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
 	cout << "Now resolve omission" << endl;
-	for (uint i = 1; i < docs.size(); i++)
+	for (uint i = 9000; i < docs.size(); i++)
 	{
 		set<int> ommision = FindOmission(docs[i], docs[i - 1], dependsList, idx2word, mcluster);
 		if (ommision.size() > 0)

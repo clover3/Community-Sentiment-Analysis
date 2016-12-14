@@ -171,7 +171,7 @@ vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 	for (auto &f : f_list)
 	{
 		vector<U> temp = f.get();
-		//vector_add(merged, temp);
+		vector_add(merged, temp);
 	}
 	return merged;
 }

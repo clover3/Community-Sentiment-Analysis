@@ -293,25 +293,28 @@ float** Clustering::init_dist(Embeddings* eb)
 		dist[i] = new float[nNode];
 	}
 
-
-	int nThread = std::thread::hardware_concurrency();
-	unsigned range = nNode / nThread;
+	size_t nThread = std::thread::hardware_concurrency();
+	size_t range = nNode / nThread;
 	cout << "evaluating distance... nThread=" << nThread << endl << flush;
 
 	vector<future<int>> flist;
-	for (unsigned i = 0; i < nThread; i++)
+	for (size_t i = 0; i < nThread; i++)
 	{
 		int from = i * range;
 		int to = (i + 1) * range;
 		flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
 	}
 
+	int from = nThread * range;
+	int to = nNode;
+	flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
+
 	for (auto &f : flist)
 	{
 		f.get();
 	}
 
-	for (unsigned i = 0; i < nNode; i++)
+	for (size_t i = 0; i < nNode; i++)
 		dist[i][i] = 0;
 
 	cout << " Done" << endl;
