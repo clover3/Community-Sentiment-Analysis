@@ -232,7 +232,8 @@ void ExtractFrequent(Docs& docs, MCluster& mcluster)
 void find_frequent_pattern(string corpus_path)
 {
 	cout << "Loading clusters...";
-    string cluster_path[] = {"cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt"};
+    string cluster_path[] = {"cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
+                                "cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt"};
     MCluster mcluster;
     int base_id = 10000000; 
     for(auto path : cluster_path)

@@ -455,6 +455,10 @@ float** Clustering::init_dist(Embeddings* eb)
 		int to = (i + 1) * range; 
 		flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
 	}
+    int from = nThread * range;
+    int to = nNode;
+    flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
+
 
     for(auto &f : flist){
         f.get();
@@ -667,8 +671,8 @@ void cluster_embedding()
 	string path = common_input + "korean_word2vec_wv_300_euckr.txt";
 	Embeddings* eb = loadEmbeddings(path.c_str());
 
-	//vector<float> epss = { 10, 50, 100, 200, 500, 1000, 2000 };
-	vector<float> epss = { 2000, 1000, 500, 100, 10 };
+	vector<float> epss = { 10, 20, 50, 100, 200, 400, 600, 900, 1600, 2500, 3600}; 
+	//vector<float> epss = { 2000, 1000, 500, 100, 10 };
 
 	map<string, int> word2idx = reverse_idx2word(load_idx2word(common_input + "idx2word"));
 	vector<Labels> labels = Clustering::Hierarchial(eb, epss);
