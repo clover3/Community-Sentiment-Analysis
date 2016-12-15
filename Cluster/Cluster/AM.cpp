@@ -233,7 +233,12 @@ void ExtractFrequent(Docs& docs, MCluster& mcluster)
 void find_frequent_pattern(string corpus_path)
 {
 	cout << "Loading clusters...";
+<<<<<<< HEAD
+    string cluster_path[] = {"cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
+                                "cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt"};
+=======
     vector<string> cluster_path = {"cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt"};
+>>>>>>> 6e23d9dc51edfc7c046c38b150277d9c63cfbfff
     MCluster mcluster;
 	mcluster.add_clusters(cluster_path);
 
