@@ -118,7 +118,7 @@ int Docs::max_word_index() const{
 	for (auto doc : (*this)){
 		for (int word : doc)
 		{
-			if (word > max && word < 1000000)
+			if (word > max && word < TEN_MILLION)
 				max = word;
 		}
 	}
@@ -265,3 +265,14 @@ uint Docs::count_occurence_without(int target, int except) const
 	return remain_occurence.size();
 }
 
+void save_docs(vector<Doc>& docs, string path)
+{
+	ofstream outfile(path);
+	for (auto doc : docs)
+	{
+		for (int elem : doc)
+			outfile << elem << " ";
+		outfile << endl;
+	}
+	outfile.close();
+}

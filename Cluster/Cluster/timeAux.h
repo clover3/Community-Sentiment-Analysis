@@ -1,10 +1,12 @@
 #pragma once
+#ifndef TIMEAUX
+#define TIMEAUX
 
 #ifdef WINVS
 #include <Windows.h>
 #endif
 
-#ifdef _WINDOWS_
+#ifdef WINVS
 #else
 #include <sys/time.h>
 #include <unistd.h>
@@ -39,3 +41,5 @@ DWORD elapsed()
 	lt = GetTickCount();
 	return dt;
 }
+
+#endif

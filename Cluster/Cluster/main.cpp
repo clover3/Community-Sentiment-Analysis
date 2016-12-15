@@ -5,6 +5,7 @@
 extern void all_test();
 extern void find_frequent_pattern();
 extern int alg_cluster();
+extern void resolve_omission_indexed();
 
 int main(int argc, char *argv[])
 {
@@ -12,7 +13,14 @@ int main(int argc, char *argv[])
 	int command;
 	if (argc == 1)
 	{
-		cout << "No argument given. Exit" << endl;
+		cout << "No argument given." << endl;
+		cout << "---- Usage -----" << endl;
+		cout << " ./cluster [command] [corpus_path] " << endl;
+		cout << " Commands " << endl;
+		cout << "  1 : run cluster_embedding. Embedding path is hard coded " << endl;
+		cout << "  2 : run find_frequent_pattern. " << endl;
+		cout << "  3 : run eval_dependency. " << endl;
+		cout << "  4 : run resolve_ommission. " << endl;
 		exit(0);
 	}
 	
@@ -47,6 +55,11 @@ int main(int argc, char *argv[])
 	{
 		cout << "Task>> Resolve omission" << endl;
 		resolve_ommission(corpus_path);
+	}
+	else if (command == 5)
+	{
+		cout << "Task>> Recover omission" << endl;
+		resolve_omission_indexed();
 	}
 	return 0;
 }

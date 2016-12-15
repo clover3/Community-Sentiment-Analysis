@@ -1,6 +1,7 @@
 #include "AM.h"
 #include "timeAux.h"
 #include "Cluster.h"
+#include "mcluster.h"
 
 void print_function_complete(const char* function_name)
 {
@@ -92,7 +93,7 @@ FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const Freq
 }
 
 
-FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2, uint ed2)
+FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2, uint ed2, const MCluster& mcluster)
 {
 	FrequentSet FS;
 	for (uint i = st1; i < ed1; i++)
@@ -101,7 +102,7 @@ FrequentSet build_C2_sub(const vector<ItemSet>& l1, uint st1, uint ed1, uint st2
 		{
 			int lastItem1 = l1[i][0];
 			int lastItem2 = l1[j][0];
-			if (lastItem1 < lastItem2)
+			if (lastItem1 < lastItem2 && mcluster.different(lastItem1, lastItem2))
 			{
 				ItemSet newset;
 				newset.push_back(lastItem1);
@@ -127,8 +128,8 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 	vector<ItemSet> l1_vector = vector<ItemSet>(L1.begin(), L1.end());
 	sort(l1_vector);
 	uint size = L1.size();
-	C2 = build_C2_sub(l1_vector, 0, size, 0, size);
-
+	C2 = build_C2_sub(l1_vector, 0, size, 0, size, mcluster);
+	/*
 	for (ItemSet set1 : L1)
 	{
 		for (ItemSet set2 : L1)
@@ -144,7 +145,8 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 				C2.insert(newset);
 			}
 		}
-	}
+	}*/
+
 	return C2;
 }
 
@@ -231,12 +233,10 @@ void ExtractFrequent(Docs& docs, MCluster& mcluster)
 void find_frequent_pattern(string corpus_path)
 {
 	cout << "Loading clusters...";
-	map<int, int> cluster1 = loadCluster(data_path + "cluster_ep20.txt");
-	map<int, int> cluster2 = loadCluster(data_path + "cluster_ep200.txt");
-	MCluster mcluster;
-	mcluster.add_cluster(cluster1, 10000000);
-	mcluster.add_cluster(cluster2, 20000000);
-	cout << endl;
+    vector<string> cluster_path = {"cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
+                                "cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt"};
+    MCluster mcluster;
+	mcluster.add_clusters(cluster_path);
 
 	Docs docs(corpus_path, mcluster);
 	ExtractFrequent(docs, mcluster);

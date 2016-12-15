@@ -6,8 +6,9 @@ CPPFLAGS=-g $(shell root-config --cflags)
 LDFLAGS=-g $(shell root-config --ldflags)
 LDLIBS= -lpthread
 
-SRCS=AM.cpp  AMTest.cpp  Cluster.cpp  Docs.cpp  FrequentSet.cpp  ItemSet.cpp  main.cpp  vectorComp.cpp  word2idx.cpp
+SRCS=AM.cpp  AMTest.cpp  Cluster.cpp  Docs.cpp  FrequentSet.cpp  ItemSet.cpp  main.cpp  vectorComp.cpp  word2idx.cpp Dependency.cpp
 OBJS=$(subst .cc,.o,$(SRCS))
+DELOBJS=$(subst .o,$(SRCS))
 
 all: Cluster 
 
@@ -21,7 +22,7 @@ depend: .depend
 	$(CXX) $(CFLAGS) $(CPPFLAGS) -MM $^>>./.depend;
 
 clean:
-	$(RM) $(OBJS)
+	$(RM) $(DELOBJS)
 
 dist-clean: clean
 	$(RM) *~ .depend

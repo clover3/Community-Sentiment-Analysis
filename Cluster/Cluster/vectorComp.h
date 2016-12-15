@@ -48,5 +48,16 @@ bool contain(vector<T> big_set, T elem)
 	return false;
 }
 
+static int max(vector<int>& v)
+{
+	int max_val = INT_MIN;
+	for (int elem : v)
+	{
+		if (elem > max_val)
+			max_val = elem;
+	}
+	return max_val;
+}
+
 
 bool sorted(vector<int> itemSet);

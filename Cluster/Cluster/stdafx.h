@@ -18,6 +18,7 @@
 #include <cctype>
 #include <locale>
 #include <stdio.h>
+#include <random>
 
 #ifdef WINVS
 using uint = size_t;
@@ -37,7 +38,11 @@ static const std::string slash = "/";
 #endif
 
 static const string data_path = "data"+ slash;
+#ifdef WINVS
 static const string common_input = ".." + slash + ".." + slash +"input" + slash;
+#else
+#define common_input (".." + slash + ".." + slash +"input" + slash)
+#endif
 
 template <typename T, typename U>
 U foldLeft(const std::vector<T>& data,
@@ -97,12 +102,16 @@ public:
 	bool has(T elem){
 		return (this->find(elem) != this->end());
 	}
-	void add(const vector<T>& v){
-		for (const T& item : v){
-			insert(item);
-		}
-	}
+    void add(const vector<T>& v);
+
 };
+
+template <typename T>
+void Set2<T>::add(const vector<T>& v){
+    for (const T& item : v){
+        this->insert(item);
+    }
+}
 
 // trim from start
 static inline std::string &ltrim(std::string &s) {
@@ -127,6 +136,18 @@ template <typename T>
 void vector_add(vector<T>& first, const vector<T>& second)
 {
 	first.insert(first.end(), second.begin(), second.end());
+}
+
+
+template <typename T, typename U>
+vector<U> serial_process(const vector<T>& input, function<U(T)> eval)
+{
+	vector<U> result;
+	for (T item : input)
+	{
+		result.push_back(eval(item));
+	}
+	return result;
 }
 
 
@@ -158,11 +179,17 @@ vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 		f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
 	}
 
+	uint st = unit * nThread;
+	uint ed = input.size();
+	ITR itr_begin = input.begin() + st;
+	ITR itr_end = input.begin() + ed;
+	f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
+
 	vector<U> merged;
 	for (auto &f : f_list)
 	{
 		vector<U> temp = f.get();
-		//vector_add(merged, temp);
+		vector_add(merged, temp);
 	}
 	return merged;
 }
@@ -180,7 +207,7 @@ public:
 	}
 };
 
-static void check_file(ifstream& infile, string& path)
+static void check_file(ifstream& infile, const string& path)
 {
 	if (!infile.good())
 	{
@@ -213,3 +240,23 @@ static vector<int> vector_and_(vector<int> v1, vector<int> v2)
 	}
 	return result;
 };
+
+static vector<int> parse_int_list(string line)
+{
+	vector<int> v;
+	istringstream iss(trim(line));
+	int item;
+	while (!iss.eof()){
+		item = -1;
+		iss >> item;
+		if (item <= 0)
+		{
+			cout << "Negative Item :" << line << endl;
+			throw exception("parse_int_list failed");
+		}
+
+		v.push_back(item);
+	}
+	assert(v.size() > 0);
+	return v;
+}

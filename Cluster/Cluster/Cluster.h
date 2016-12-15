@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "word2idx.h"
+#include "embedding.h"
 
 template<typename T>
 void for_enum(T& container, std::function<void(int, typename T::value_type&)> op)
@@ -9,13 +10,6 @@ void for_enum(T& container, std::function<void(int, typename T::value_type&)> op
 	for (auto& value : container)
 		op(idx++, value);
 }
-
-class Embedding : public vector < float >
-{
-public:
-	string text;
-};
-using Embeddings = vector<Embedding>;
 
 class Labels : public vector<int>
 {
@@ -34,7 +28,6 @@ enum EDIST_METRIC{
 	euclidean = 1,
 	manhattan = 2,
 	geomean = 3
-
 };
 
 float dist_euclidean(const vector<float> &e1, const  vector<float> &e2);
@@ -46,7 +39,7 @@ public:
 	{
 		add_cnt = 0;
 	}
-	Centroid(uint k) : vector<float>() 
+	Centroid(uint k) : vector<float>()
 	{
 		for (uint i = 0; i < k; i++)
 			push_back(0);
@@ -91,22 +84,24 @@ public:
 
 class Clustering
 {
+	static float** init_dist(Embeddings* eb);
 public:
 	static Labels thresholdCluster(Embeddings* eb, float eps);
 	static Labels OneStepCluster(Embeddings* eb, float eps);
 	static Labels KMeans(Embeddings* eb, float eps, int k);
 	static Labels KMeans(Embeddings* eb, Centroids centroids, float eps, int k);
+	static vector<Labels> Hierarchial(Embeddings* eb, vector<float> eps);
 private:
 };
 
-using cluster = map < int, vector<int> > ;
+using cluster = map < int, vector<int> >;
 
 
 
 class Edges : public vector < list<int> > {
 public:
 	Edges(Embeddings* eb, float eps, EDIST_METRIC dist_metric);
-	int totalEdge(){ return nSize;  }
+	int totalEdge(){ return nSize; }
 private:
 
 
@@ -118,33 +113,4 @@ void cluster_embedding();
 
 map<int, int> loadCluster(string path);
 void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels);
-
 void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster);
-
-class MCluster
-{
-public:
-	vector<int> get_categories(int word) const;
-	vector<int> get_words(int category) const;
-
-	bool different(int cword1, int cword2) const;
-	void add_cluster(map<int, int>& cluster, int prefix);
-
-	vector<int> get_all_words() const 
-	{
-		std::vector<int> words;
-		for (auto pair : word2categories)
-			words.push_back(pair.first);
-		return words;
-	}
-	vector<int> get_all_categorys() const
-	{
-		std::vector<int> v;
-		for (auto pair : category2words)
-			v.push_back(pair.first);
-		return v;
-	}
-private:
-	map<int, vector<int>> word2categories;
-	map<int, vector<int>> category2words;
-};
