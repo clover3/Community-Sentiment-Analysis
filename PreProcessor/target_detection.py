@@ -37,6 +37,8 @@ class Option(object):
         return self.fFail
 
     def get(self):
+        if self.fFail:
+            raise Exception("Cannot get from failed Option")
         return self.obj
 
     @staticmethod
@@ -259,7 +261,7 @@ def resolve_target_and_eval(data):
                 if len(candidate_users) == 1:
                     text = list_filtered[-1]
                     case_counter.add_count(5)
-                    return Option((text[IDX_THREAD_ID], text[IDX_ARTICLE_ID]))
+                    return Option(get_thread_article_id(text))
                 else:
                     return Option.fail()
 
@@ -282,7 +284,7 @@ def resolve_target_and_eval(data):
                     return Option(get_thread_article_id(target))
                 except Exception as e:
                     print(e)
-                    return Option.fail()
+                    return Option((0,0))
 
             ret = handle_case1()       ### Case 3
             if ret.isFail():
@@ -484,7 +486,12 @@ def load_idx2word(path):
     word2idx = dict()
     for line in data:
         idx = int(line.split()[0])
-        word = (line.split())[1]
+        raw_word =(line.split())[1].strip()
+        assert type(raw_word)==type(u"hello")
+
+        word = raw_word.encode("utf-8")
+
+        assert type(word)==type("word")
         idx2word[idx] = word
         word2idx[word] = idx
     return idx2word, word2idx
@@ -502,8 +509,15 @@ def load_rules(path, word2idx):
 
 
 def to_indexed_string(tokens, word2idx):
-    index_tokens = [word2idx[word] for word in tokens]
-    return index_tokens.join(" ")
+    real_tokens = filter(lambda x: len(x) > 0, tokens)
+    try:
+        index_tokens = [str(word2idx[word]) for word in real_tokens]
+    except KeyError as e:
+        print e.args[0]
+        raise e
+    if len(index_tokens) == 0:
+        index_tokens = ['5']
+    return " ".join(index_tokens)
 
 
 def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (int,int)) -> List(String)
@@ -523,11 +537,16 @@ def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (i
             related_post = data_dic[related_index] # text
             post_fix = to_indexed_string(related_post[IDX_TOKENS], word2idx)
             out_str += (" - " + post_fix)
+        return out_str
 
     return [post2pair_str(post) for post in data]
 
 
+
 def process_bobae():
+
+    idx2word, word2idx = load_idx2word("..\\input\\idx2word")
+
     cursor = 0
     size = 100000
     data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
@@ -540,16 +559,53 @@ def process_bobae():
     labels = load_csv(label_path)
 
     validate_a_contain_b(data_token_parsed, labels)
-    idx2word, word2idx = load_idx2word("..\\input\\idx2word")
 
     ###  Sentence 1 - Related Sentence N
     str_list = extract_pair(data_token_parsed, related_dic, word2idx)
     output_str_list("..\\input\\related.index", str_list)
 
+
+def load_recovered(path, idx2word):
+    raw_list = load_list(path)
+
+    def line2int_list(line):
+        return [idx2word[int(token)] for token in line.split()]
+
+    return [line2int_list(line) for line in raw_list]
+
+
+
+def replace_token(articles, replace):
+    result = []
+    for i,article in enumerate(articles):
+        try:
+            tokens = article[IDX_TOKENS].split('/')
+            n_article = article[0:IDX_TOKENS] + [replace[i]]
+            result.append(n_article)
+        except Exception as e:
+            print(e)
+    return result
+
+def apply_recovered():
+    idx2word, word2idx = load_idx2word("..\\input\\idx2word")
+    cursor = 0
+    size = 100000
+    data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+    recovered = load_recovered("..\\input\\recovered.index", idx2word)
+    lined = ["/".join(tokens) for tokens in recovered]
+
+    print type(lined[0])
+    print lined[0]
+
+    data_token_parsed = replace_token(data, lined)
+    save_csv(data_token_parsed, "babae_car_recovered.csv")
+
+
+
 if __name__ == '__main__':
     freeze_support()
     #test_on_guldang()
 
-    process_bobae()
-
+    #process_bobae()
+    apply_recovered()
 #create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
