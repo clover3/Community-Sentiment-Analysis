@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "Cluster.h"
+#include "mcluster.h"
 
 template< typename T, size_t N >
 std::vector<T> makeVector(const T(&data)[N])

@@ -28,6 +28,12 @@
     <Filter Include="bat">
       <UniqueIdentifier>{c5dde417-e32b-492d-865e-bf857e90b2d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\clustering">
+      <UniqueIdentifier>{ae3983bb-f269-4a6d-8d21-7bc03b514526}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common">
+      <UniqueIdentifier>{7aa0bd6c-68c9-4d30-9383-2fedad75f4e1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -38,9 +44,6 @@
     </ClCompile>
     <ClCompile Include="AMTest.cpp">
       <Filter>Test</Filter>
-    </ClCompile>
-    <ClCompile Include="Cluster.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FrequentSet.cpp">
       <Filter>Source Files</Filter>
@@ -60,17 +63,17 @@
     <ClCompile Include="Dependency.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mcluster.cpp">
+      <Filter>Source Files\clustering</Filter>
+    </ClCompile>
+    <ClCompile Include="Cluster.cpp">
+      <Filter>Source Files\clustering</Filter>
+    </ClCompile>
+    <ClCompile Include="embedding.cpp">
+      <Filter>Source Files\clustering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vectorComp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="timeAux.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="word2idx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -91,6 +94,21 @@
     </ClInclude>
     <ClInclude Include="Dependency.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="timeAux.h">
+      <Filter>Header Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="vectorComp.h">
+      <Filter>Header Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="mcluster.h">
+      <Filter>Header Files\Clustering</Filter>
+    </ClInclude>
+    <ClInclude Include="embedding.h">
+      <Filter>Header Files\Clustering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

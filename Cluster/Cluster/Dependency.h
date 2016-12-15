@@ -12,11 +12,11 @@ public:
 	{
 
 	}
-	void print(Idx2Word& idx2word)
+	void print(function<string(int)> idx2word)
 	{
-		cout << "P(" << idx2word[target] << " | ";
+		cout << "P(" << idx2word(target) << " | ";
 		for (auto ritem : dependents)
-			cout << idx2word[ritem] << ", ";
+			cout << idx2word(ritem) << ", ";
 		cout << ") = " << probability << endl;
 	}
 private:

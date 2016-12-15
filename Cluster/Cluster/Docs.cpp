@@ -118,7 +118,7 @@ int Docs::max_word_index() const{
 	for (auto doc : (*this)){
 		for (int word : doc)
 		{
-			if (word > max && word < 1000000)
+			if (word > max && word < TEN_MILLION)
 				max = word;
 		}
 	}
