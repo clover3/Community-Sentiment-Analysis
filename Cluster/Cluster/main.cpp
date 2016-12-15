@@ -5,6 +5,7 @@
 extern void all_test();
 extern void find_frequent_pattern();
 extern int alg_cluster();
+extern void resolve_omission_indexed();
 
 int main(int argc, char *argv[])
 {
@@ -54,6 +55,11 @@ int main(int argc, char *argv[])
 	{
 		cout << "Task>> Resolve omission" << endl;
 		resolve_ommission(corpus_path);
+	}
+	else if (command == 5)
+	{
+		cout << "Task>> Recover omission" << endl;
+		resolve_omission_indexed();
 	}
 	return 0;
 }

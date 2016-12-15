@@ -300,13 +300,13 @@ float** Clustering::init_dist(Embeddings* eb)
 	vector<future<int>> flist;
 	for (size_t i = 0; i < nThread; i++)
 	{
-		int from = i * range;
-		int to = (i + 1) * range;
+		size_t from = i * range;
+		size_t to = (i + 1) * range;
 		flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
 	}
 
-	int from = nThread * range;
-	int to = nNode;
+	size_t from = nThread * range;
+	size_t to = nNode;
 	flist.push_back(async(launch::async, eval_dist, from, to, dist, eb));
 
 	for (auto &f : flist)

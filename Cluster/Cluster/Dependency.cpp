@@ -33,6 +33,55 @@ int find_match(int i, vector<string>& rawdoc, Doc doc, Idx2Word& idx2word)
 	return -1;
 }
 
+struct sentence_context{
+	Doc sentence;
+	Doc context;
+	bool fHasContext;
+};
+
+vector<sentence_context> load_sentence_contexts(string path)
+{
+	ifstream infile(path);
+	check_file(infile, path);
+
+	vector<sentence_context> v;
+	string line;
+	while (std::getline(infile, line))
+	{
+		size_t loc = line.find('-');
+		if (loc != string::npos)
+		{
+			string sentence1 = line.substr(0, loc);
+			string sentence2 = line.substr(loc + 1);
+			assert(sentence1.size() > 0);
+			assert(sentence2.size() > 0);
+			sentence_context sc; 
+			try{
+				sc.sentence = parse_int_list(sentence1);
+				sc.context = parse_int_list(sentence2);
+			}
+			catch (exception& pe){
+				cout << "line:" << line;
+				cout << "sentence1:" << sentence1;
+				cout << "sentence2:" << sentence2;
+			}
+			sc.fHasContext = true;
+			v.push_back(sc);
+		}
+		else
+		{
+			string sentence1 = line;
+
+			sentence_context sc;
+			sc.sentence = parse_int_list(sentence1);
+			sc.fHasContext = false;
+			v.push_back(sc);
+		}
+	}
+
+	return v;
+}
+
 Idx2Word* g_idx2word;
 function<string(int)> lambda_idx2word = [](int idx){ return string("NULL");  };
 
@@ -179,7 +228,7 @@ vector<Dependency> get_dependency_mt(Docs& docs, FrequentSet& fs)
 
 
 // token can be both(real_word, category)
-bool contain_cword(Doc& doc, int token, MCluster& mcluster)
+bool contain_cword(Doc& doc, int token, const MCluster& mcluster)
 {
 	for (auto item : doc)
 	{
@@ -194,7 +243,7 @@ bool contain_cword(Doc& doc, int token, MCluster& mcluster)
 	return false;
 }
 
-bool missing_cword(Doc& doc, int token, MCluster& mcluster)
+bool missing_cword(Doc& doc, int token, const MCluster& mcluster)
 {
 	return !contain_cword(doc, token, mcluster);
 }
@@ -220,6 +269,56 @@ vector<Dependency> PatternToDependency(Docs& docs, MCluster& mcluster)
 	}
 
 	return dependsList;
+}
+
+
+Word_ID try_find_from(IndexedDoc& doc, int target, MCluster& mcluster)
+{
+	if (target > TEN_MILLION)
+	{
+		vector<int> categories = mcluster.get_categories(target);
+		for (int cword : categories)
+		{
+			Word_ID word = doc.find_word_with_category(Category_ID(cword));
+			if (word.valid())
+				return word;
+		}
+		return Word_ID::Invalid();
+	}
+	else
+	{
+		if (doc.contains_word(target))
+			return Word_ID(target);
+		else
+			return Word_ID::Invalid();
+	}
+}
+
+Doc recover_omission(
+	Doc& doc,
+	Doc& context,
+	const DependencyIndex& dependency_index,
+	MCluster& mcluster)
+{
+	Doc recovered_doc;
+	IndexedDoc context_index(context, mcluster);
+	for (int token : doc)
+	{
+		recovered_doc.push_back(token);
+		// these contains token as remains
+		vector<Dependency> candidate_dependencys = dependency_index.find_with_dependent(Word_ID(token));
+		for (Dependency dependency : candidate_dependencys)
+		{
+			if (missing_cword(doc, dependency.target, mcluster))
+			{
+				Word_ID target_token = try_find_from(context_index, dependency.target, mcluster);
+				if ( target_token.valid() )
+					recovered_doc.push_back( target_token.get() );
+			}
+		}
+	}
+
+	return recovered_doc;
 }
 
 
@@ -295,6 +394,7 @@ vector<Dependency> load_dependency(string path)
 		int token;
 		while (!iss.eof()){
 			iss >> token;
+			assert(token >= 0);
 			itemset.push_back(token);
 		}
 		Dependency dep(item, itemset, 0);
@@ -399,3 +499,74 @@ void resolve_ommission(string corpus_path)
 	}
 }
 
+
+void check_sentence(Doc& doc)
+{
+	try{
+		for (auto item : doc)
+		{
+			if (item > MILLION)
+				throw exception();
+			if (item < 0)
+				throw exception("smaller than 0");
+		}
+	}
+	catch (const exception& pe){
+		cout << "Invalid sentence : ";
+		for (auto item : doc)
+		{
+			cout << item << " ";
+		}
+		cout << endl;
+	}
+}
+
+void resolve_omission_indexed()
+{
+	cout << "resolve_omission_indexed ENTRY" << endl;
+	string sc_path = common_input + "related.index";
+	vector<sentence_context> vsc = load_sentence_contexts(sc_path);
+	vector<Doc> output_docs;
+	cout << "loaded sentences" << endl;
+
+	vector<string> cluster_path = { "cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
+		"cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt" };
+	MCluster mcluster;
+	mcluster.add_clusters(cluster_path);
+	cout << "loaded clusters" << endl;
+
+	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
+	cout << "loaded dependsList" << endl;
+	DependencyIndex index(dependsList, &mcluster);
+	cout << "Indexing dependsList" << endl;
+	int line_count = 0;
+	try
+	{
+		function<Doc(sentence_context)> resolver = [&index, &mcluster](sentence_context vs)
+		{
+			if (vs.fHasContext)
+			{
+				check_sentence(vs.sentence); check_sentence(vs.context);
+				Doc outdoc = recover_omission(vs.sentence, vs.context, index, mcluster);
+				return outdoc;
+			}
+			else
+				return vs.sentence;
+		};
+		vector<sentence_context> v_last(vsc.begin() , vsc.end());
+		output_docs = parallelize(v_last, resolver);
+	}
+	catch (exception* e)
+	{
+		cout << "exception " << endl;
+		cout << e << endl;
+	}
+	catch (std::runtime_error& e) {
+		cout << "runtime_error " << endl;
+		cout << e.what() << endl;
+
+	}
+
+	string recovered_path = common_input + "recovered.index";
+	save_docs(output_docs, recovered_path);
+}

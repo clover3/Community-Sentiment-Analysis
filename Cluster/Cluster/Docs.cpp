@@ -265,3 +265,14 @@ uint Docs::count_occurence_without(int target, int except) const
 	return remain_occurence.size();
 }
 
+void save_docs(vector<Doc>& docs, string path)
+{
+	ofstream outfile(path);
+	for (auto doc : docs)
+	{
+		for (int elem : doc)
+			outfile << elem << " ";
+		outfile << endl;
+	}
+	outfile.close();
+}

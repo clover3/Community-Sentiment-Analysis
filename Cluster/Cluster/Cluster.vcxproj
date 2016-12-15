@@ -180,6 +180,7 @@
     <None Include="2run.bat" />
     <None Include="3run.bat" />
     <None Include="4run.bat" />
+    <None Include="5run.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -167,6 +167,12 @@ vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 		f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
 	}
 
+	uint st = unit * nThread;
+	uint ed = input.size();
+	ITR itr_begin = input.begin() + st;
+	ITR itr_end = input.begin() + ed;
+	f_list.push_back(async(launch::async, evaluator, itr_begin, itr_end));
+
 	vector<U> merged;
 	for (auto &f : f_list)
 	{
@@ -222,3 +228,23 @@ static vector<int> vector_and_(vector<int> v1, vector<int> v2)
 	}
 	return result;
 };
+
+static vector<int> parse_int_list(string line)
+{
+	vector<int> v;
+	istringstream iss(trim(line));
+	int item;
+	while (!iss.eof()){
+		item = -1;
+		iss >> item;
+		if (item <= 0)
+		{
+			cout << "Negative Item :" << line << endl;
+			throw exception("parse_int_list failed");
+		}
+
+		v.push_back(item);
+	}
+	assert(v.size() > 0);
+	return v;
+}

@@ -132,5 +132,8 @@
     <None Include="1run.bat">
       <Filter>bat</Filter>
     </None>
+    <None Include="5run.bat">
+      <Filter>bat</Filter>
+    </None>
   </ItemGroup>
 </Project>

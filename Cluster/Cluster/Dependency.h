@@ -24,6 +24,48 @@ private:
 };
 
 
+class DependencyIndex
+{
+private:
+	MCluster *m_pMCluster;
+	vector<vector<Dependency>> index;
+public:
+
+	DependencyIndex(vector<Dependency>& vd, MCluster* mcluster)
+	{
+		cout << "DependencyIndex constructor" << endl;
+		m_pMCluster = mcluster;
+		int max_voca = max(mcluster->get_all_words());
+		index.resize(max_voca+1);
+		for (Dependency&d : vd)
+		{
+			if (d.dependents.size() == 0)
+				cout << "Dammn!!" << endl;
+			int dependents = d.dependents[0];
+			if (dependents > TEN_MILLION)
+			{
+				vector<int> group = mcluster->get_words(dependents);
+				for (int word : group)
+					index[word].push_back(d);
+			}
+			else
+			{
+				index[dependents].push_back(d);
+			}
+		}
+	}
+
+	vector<Dependency> find_with_dependent(Word_ID dependent) const
+	{
+		assert(200000 > dependent.get());
+		if (dependent.get() >= index.size())
+			return vector<Dependency>();
+		vector<Dependency> list1 = index[dependent.get()];
+		return list1;
+	}
+};
+
+
 void find_frequent_pattern();
 
 

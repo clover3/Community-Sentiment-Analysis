@@ -7,6 +7,32 @@
 */
 
 const int TEN_MILLION = 10000000;
+const int MILLION = 1000000;
+
+class Word_ID
+{
+private:
+	int val;
+public:
+	static Word_ID Invalid(){ return Word_ID(-1); }
+	bool valid(){ return val > 0; }
+	int get(){ return val; }
+	Word_ID(int id) : val(id){
+		assert(id >= -1);
+	}
+};
+
+class Category_ID
+{
+private:
+	int val;
+public:
+	bool valid(){ return val > TEN_MILLION; }
+	int get(){ return val; }
+	Category_ID(int id) : val(id){
+		assert(id >= -1);
+	}
+};
 
 class MCluster
 {
