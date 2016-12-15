@@ -22,6 +22,10 @@ def load_csv_euc_kr(path):
     with codecs.open(path, "rb", "cp949") as f:
         return [line for line in csv.reader(f)]
 
+def load_csv_utf(path):
+    with codecs.open(path, "rb", "utf-8") as f:
+        return [line for line in csv.reader(f)]
+
 
 def save_csv_euc_kr(data, path):
     with codecs.open(path, "wb", 'cp949') as f:
@@ -53,7 +57,7 @@ def parse_token(articles):
             n_article = article[0:IDX_TOKENS] + [tokens]
             result.append(n_article)
         except Exception as e:
-            print i,(e)
+            print(i,(e))
     return result
 
 
