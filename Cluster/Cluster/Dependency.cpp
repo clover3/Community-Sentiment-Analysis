@@ -245,7 +245,8 @@ bool contain_cword(Doc& doc, int token, const MCluster& mcluster)
 
 bool missing_cword(Doc& doc, int token, const MCluster& mcluster)
 {
-	return !contain_cword(doc, token, mcluster);
+	bool f = !contain_cword(doc, token, mcluster);
+	return f;
 }
 
 bool contain_cwords(Doc& doc, vector<int> cwords, MCluster& mcluster)
@@ -312,8 +313,13 @@ Doc recover_omission(
 			if (missing_cword(doc, dependency.target, mcluster))
 			{
 				Word_ID target_token = try_find_from(context_index, dependency.target, mcluster);
-				if ( target_token.valid() )
-					recovered_doc.push_back( target_token.get() );
+				if (target_token.valid())
+				{
+					int item = target_token.get();
+					int last = recovered_doc[recovered_doc.size() - 1];
+					if (item != last)
+						recovered_doc.push_back(item);
+				}
 			}
 		}
 	}
@@ -538,8 +544,8 @@ void resolve_omission_indexed()
 	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
 	cout << "loaded dependsList" << endl;
 	DependencyIndex index(dependsList, &mcluster);
-	cout << "Indexing dependsList" << endl;
 	int line_count = 0;
+	cout << "Start ellipsis recovery" << endl;
 	try
 	{
 		function<Doc(sentence_context)> resolver = [&index, &mcluster](sentence_context vs)
@@ -553,8 +559,9 @@ void resolve_omission_indexed()
 			else
 				return vs.sentence;
 		};
-		vector<sentence_context> v_last(vsc.begin() , vsc.end());
+		vector<sentence_context> v_last(vsc.begin(), vsc.end());
 		output_docs = parallelize(v_last, resolver);
+		//output_docs = serial_process(v_last, resolver);
 	}
 	catch (exception* e)
 	{

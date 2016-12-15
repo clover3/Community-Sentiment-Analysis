@@ -140,6 +140,18 @@ void vector_add(vector<T>& first, const vector<T>& second)
 
 
 template <typename T, typename U>
+vector<U> serial_process(const vector<T>& input, function<U(T)> eval)
+{
+	vector<U> result;
+	for (T item : input)
+	{
+		result.push_back(eval(item));
+	}
+	return result;
+}
+
+
+template <typename T, typename U>
 vector<U> parallelize(const vector<T>& input, function<U(T)> eval)
 {
 	int nThread = std::thread::hardware_concurrency();
