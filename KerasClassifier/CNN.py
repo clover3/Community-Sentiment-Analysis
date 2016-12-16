@@ -108,18 +108,21 @@ def build_index(voca, w2v, k):
 
 
 class DataSet:
-    def __init__(self, dataset_x, dataset_y, idx2vect, len_embedding):
-        data = zip(dataset_x, dataset_y)
+    def __init__(self, dataset_x, data_set_e, dataset_y, idx2vect, len_embedding, keywords2idx):
+        data = zip(dataset_x, data_set_e, dataset_y)
         numpy.random.shuffle(data)
         len_train = int(len(data) * 0.9)
-        train_x, train_y = zip(*data[0:len_train])
-        test_x, test_y = zip(*data[len_train:])
+        train_x, train_e, train_y = zip(*data[0:len_train])
+        test_x, test_e, test_y = zip(*data[len_train:])
 
         self.train_x = numpy.array(train_x)
+        self.train_e = numpy.array(train_e)
         self.train_y = numpy.array(train_y)
         self.test_x = numpy.array(test_x)
+        self.test_e = numpy.array(test_e)
         self.test_y = numpy.array(test_y)
 
+        self.keyword2idx = keywords2idx
         self.idx2vect = idx2vect
         self.len_embedding = len_embedding
 
@@ -200,6 +203,15 @@ def load_data_get_word2idx(label_path, path_article, w2v_path, dimension):
     word2idx, idx2vect = build_index(voca, w2v, dimension)
     return word2idx
 
+
+def set2idxmap(s):
+    d = dict()
+    cnt = 0
+    for item in s :
+        d[item] = cnt
+        cnt += 1
+    return d
+
 def load_data_label(label_path, path_article, w2v_path, dimension):
     IDX_R_THREAD = 1
     IDX_R_ARTICLE = 2
@@ -210,11 +222,14 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
     labels = load_csv(label_path)
     labels = [label for label in labels if label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' or label[IDX_R_LABEL] == '2' ]
     labels_pos = [label for label in labels if label[IDX_R_LABEL] == '1']
-    labels_neu = [label for label in labels if label[IDX_R_LABEL] == '2'][:5000]
+    labels_neu = [label for label in labels if label[IDX_R_LABEL] == '2']
     labels_neg = [label for label in labels if label[IDX_R_LABEL] == '3']
 
     labels = labels_pos + labels_neu + labels_neg
     random.shuffle(labels)
+
+    all_keyword = set([label[IDX_R_KEYWORD] for label in labels])
+    keyword2idx = set2idxmap(all_keyword)
 
     n_pos =  len([label for label in labels if label[IDX_R_LABEL] == '1'])
     n_neu =  len([label for label in labels if label[IDX_R_LABEL] == '2'])
@@ -284,7 +299,13 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
                 result.append(0)
         return result
 
+    def label2x(label):
+        index = indexize(label)
+        keyword = keyword2idx[label[IDX_R_KEYWORD]]
+        return numpy.array([index, keyword])
+
     data_set_x = numpy.array([indexize(label) for label in labels])
+    data_set_e = numpy.array([ keyword2idx[label[IDX_R_KEYWORD]] for label in labels])
     def label2hotv(label):
         if label[IDX_R_LABEL] == '3':
             return (1,0,0)
@@ -298,7 +319,7 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
 
     data_set_y = [label2hotv(label) for label in labels]
 
-    return DataSet(data_set_x, data_set_y, idx2vect, dimension)
+    return DataSet(data_set_x, data_set_e, data_set_y, idx2vect, dimension, keyword2idx)
 
 
 def load_data(pos_path, neg_path, w2v_path, dimension):
@@ -387,6 +408,54 @@ def load_data_carsurvey(path_label, w2v_path, dimension):
     dataset_y = [ text2label(line[4]) for line in data]
     return DataSet(dataset_x, dataset_y, idx2vect, dimension)
 
+
+entity_embed_length = 50
+def buildModel(len_embedding, data, filter_sizes):
+    num_class = 3
+    num_filters = 500
+    embedding_dim = len_embedding
+    size_voca = len(data.idx2vect)
+    numentity = len(set(data.keyword2idx.keys()))
+    eew = [numpy.random.uniform(-0.01, 0.01, size=(numentity, entity_embed_length))]
+
+    sent_input = Input(shape=(len_sentence,), dtype='int32', name='sent_level_input')
+    ei_input = Input(shape=(1,), name='entity_indicator_input')
+
+    sent_x = Embedding(size_voca, embedding_dim,
+      input_length=len_sentence, weights=[data.idx2vect])(sent_input)
+
+    ei_emb = Embedding(numentity, entity_embed_length, input_length=1, weights=eew)(ei_input)
+    ei_emb = Reshape([entity_embed_length])(ei_emb)
+
+    sent_x = Dropout(0.5, input_shape=(len_sentence, embedding_dim))(sent_x)
+    ei_emb = Dropout(0.5, input_shape=(1, entity_embed_length))(ei_emb)
+
+    multiple_filter_output= []
+    for i in xrange(len(filter_sizes)):
+        conv = Convolution1D(nb_filter=num_filters,
+          filter_length= filter_sizes[i],
+          border_mode='valid',
+          bias=True,
+          activation='relu',
+          subsample_length=1)(sent_x)
+        pool = MaxPooling1D(pool_length = len_sentence - filter_sizes[i] + 1)(conv)
+        multiple_filter_output.append(Flatten()(pool))
+
+    if len(filter_sizes) == 1:
+        text_feature = multiple_filter_output[0]
+    else:
+        text_feature = merge(multiple_filter_output, mode = 'concat') # text features from CNN
+
+    text_ei_feature = merge([text_feature, ei_emb], mode='concat')
+    text_ei_feature = Dropout(0.5)(text_ei_feature)
+    sent_loss = Dense(num_class, activation='softmax', name='sent_level_output')(text_ei_feature)
+    adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08)
+
+    model = Model(input=[sent_input, ei_input], output=sent_loss) # TODO : take multiple inputs
+    model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
+
+    return model
+
 def get_model(len_embedding, size_voca):
     print("Creating Model : ")
     n_filter = 500
@@ -419,7 +488,7 @@ def get_model(len_embedding, size_voca):
 def get_model_dirty(len_embedding, data, filter_sizes):
     print("Creating Model... ")
 
-    dropout_prob = (0.5, 0.5)
+    dropout_prob = (0.2, 0.2)
     n_filter = 200
     hidden_dims = 100
     size_voca = len(data.idx2vect)
@@ -447,7 +516,7 @@ def get_model_dirty(len_embedding, data, filter_sizes):
     sent_v = Dense(hidden_dims)(sent_v)
     sent_v = Dropout(dropout_prob[1])(sent_v)
     sent_v = Activation('relu')(sent_v)
-    sent_loss = Dense(2, activation='sigmoid', name='sent_level_output')(sent_v)
+    sent_loss = Dense(3, activation='sigmoid', name='sent_level_output')(sent_v)
 
     adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08)
 
@@ -522,17 +591,18 @@ def run_korean():
     path_lable = "D:\\data\\corpus_samba.csv"
     w2v_path = "D:\\data\\input\\korean_word2vec_wv_50.txt"
     path_article = "D:\\data\\input\\bobae_car_tkn_twitter.csv"
+    #path_article = "D:\\data\\input\\babae_car_recovered2.csv"
 
     data = load_data_label(path_lable, path_article, w2v_path, len_embedding)
 
-    model = get_model_dirty(len_embedding, data, [3,4,5,6,7,8,9,10,11,12,13])
-    #model = get_model(len_embedding, data.voca_size)
+    #model = get_model_dirty(len_embedding, data, [3,4,5,6,7])
+    model = buildModel(len_embedding, data, [3,4,5,6,7])
 
     print("Training Model...")
-    model.fit(data.train_x, data.train_y,
-              batch_size=100,
+    model.fit([data.train_x, data.train_e], data.train_y,
+              batch_size=300,
               nb_epoch=300,
-              validation_data=(data.test_x, data.test_y),
+              validation_data=([data.test_x, data.test_e], data.test_y),
               shuffle=True)
 
     return model
@@ -574,7 +644,8 @@ def save_word2idx():
 
 if __name__ == "__main__":
     #save_word2idx()
-    model = run_gt()
-    model.save("model")
+    #model = run_gt()
+    #model.save("model")
     #run_agreement()
     #run_carsurve()
+    run_korean()
