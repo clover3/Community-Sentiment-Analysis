@@ -29,6 +29,10 @@ using uint = size_t;
 #endif
 
 
+#ifndef INT_MIN 
+#define INT_MIN -2147483648
+#endif
+
 using namespace std;
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -252,7 +256,7 @@ static vector<int> parse_int_list(string line)
 		if (item <= 0)
 		{
 			cout << "Negative Item :" << line << endl;
-			throw exception("parse_int_list failed");
+			throw range_error("parse_int_list failed");
 		}
 
 		v.push_back(item);

@@ -35,7 +35,8 @@ public:
 	{
 		cout << "DependencyIndex constructor" << endl;
 		m_pMCluster = mcluster;
-		int max_voca = max(mcluster->get_all_words());
+        auto all_words = mcluster->get_all_words() ;
+		int max_voca = max(all_words);
 		index.resize(max_voca+1);
 		for (Dependency&d : vd)
 		{
