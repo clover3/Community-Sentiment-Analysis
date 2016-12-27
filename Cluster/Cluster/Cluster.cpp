@@ -231,7 +231,7 @@ Labels Clustering::thresholdCluster(Embeddings* eb, float eps)
 	printf("running clustering...");
 
 	vector<int> rank(nNode);
-	for (auto r : rank)
+	for (auto &r : rank)
 		r = 0;
 
 	bool retry = true;
