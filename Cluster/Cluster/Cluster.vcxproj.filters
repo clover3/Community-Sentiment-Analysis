@@ -95,9 +95,6 @@
     <ClInclude Include="FrequentSet.h">
       <Filter>Header Files\Association Pattern</Filter>
     </ClInclude>
-    <ClInclude Include="Dependency.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files\common</Filter>
     </ClInclude>
@@ -114,6 +111,9 @@
       <Filter>Header Files\Clustering</Filter>
     </ClInclude>
     <ClInclude Include="wordgraph.h">
+      <Filter>Header Files\Dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="Dependency.h">
       <Filter>Header Files\Dependency</Filter>
     </ClInclude>
   </ItemGroup>

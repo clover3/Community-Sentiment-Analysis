@@ -5,6 +5,26 @@
 #include "wordgraph.h"
 
 
+class DebugPrinter
+{
+public:
+	void printDoc(Doc& doc)
+	{
+		print_doc(doc, *m_idx2word);
+	}
+	void init(Idx2Word* pIdx2word)
+	{
+		m_idx2word = pIdx2word;
+	}
+	string idx2word(int idx){
+		return m_idx2word->find(idx).operator*().second;
+	}
+private:
+	Idx2Word* m_idx2word;
+};
+
+DebugPrinter DP;
+
 bool ignore_pattern(ItemSet itemSet)
 {
 	for (int item : itemSet)
@@ -529,6 +549,9 @@ void resolve_omission_indexed()
 	MCluster mcluster;
 	mcluster.add_clusters(cluster_path);
 	cout << "loaded clusters" << endl;
+
+	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
+	DP.init(&idx2word);
 
 	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
 	cout << "loaded dependsList" << endl;
