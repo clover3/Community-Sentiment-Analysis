@@ -8,6 +8,7 @@
 
 const int TEN_MILLION = 10000000;
 const int MILLION = 1000000;
+const int HUNDRED_THOUSAND = 100000;
 
 class Word_ID
 {
@@ -19,6 +20,9 @@ public:
 	int get(){ return val; }
 	Word_ID(int id) : val(id){
 		assert(id >= -1);
+	}
+	bool operator<(const Word_ID &other) const{
+		return val < other.val;
 	}
 };
 
@@ -65,3 +69,6 @@ private:
 	int m_base_id;
 
 };
+
+
+Set2<Word_ID> expand_word(int word, MCluster& cluster);

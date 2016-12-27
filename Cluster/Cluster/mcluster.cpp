@@ -69,3 +69,19 @@ void MCluster::add_clusters(vector<string> paths)
 		m_base_id += TEN_MILLION;
 	}
 }
+
+static function<Word_ID(int)> int2word = [](int item){return Word_ID(item); };
+
+
+Set2<Word_ID> expand_word(int word, MCluster& cluster)
+{
+	Set2<Word_ID> word_ids;
+	if (word < TEN_MILLION)
+		word_ids.insert(word);
+	else
+	{
+		vector<Word_ID> words = mapf(cluster.get_words(word), int2word);
+		word_ids.add(words);
+	}
+	return word_ids;
+}

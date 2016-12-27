@@ -170,6 +170,7 @@
     <ClInclude Include="timeAux.h" />
     <ClInclude Include="vectorComp.h" />
     <ClInclude Include="word2idx.h" />
+    <ClInclude Include="wordgraph.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Document.txt" />

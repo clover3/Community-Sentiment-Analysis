@@ -2,6 +2,8 @@
 #include <math.h>
 #include "Cluster.h"
 #include <fstream>
+#include "wordgraph.h"
+
 
 bool ignore_pattern(ItemSet itemSet)
 {
@@ -154,7 +156,7 @@ void log_is_dependent(const int item, const ItemSet& pattern, const Docs& docs, 
 		<< "P(~item|remaining)=" << probability_without << endl;
 }
 
-vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& fs)
+vector<Dependency> get_dependency(Docs& docs, FrequentSet& fs)
 {
 	cout << "Calculating Dependencies" << endl;
 	vector<ItemSet> patterns;
@@ -174,7 +176,7 @@ vector<Dependency> get_dependency(Docs& docs, MCluster& mcluster, FrequentSet& f
 		for (int item : pattern)
 		{
 			ItemSet remaining = pattern - item;
-			//log_is_dependent(item, pattern, docs, lambda_idx2word, fstream);
+			log_is_dependent(item, pattern, docs, lambda_idx2word, fstream);
 			if (is_dependent(item, pattern, docs))
 			{
 				Dependency dep(item, remaining, 0);
@@ -266,7 +268,7 @@ vector<Dependency> PatternToDependency(Docs& docs, MCluster& mcluster)
 	for (string path : fslist)
 	{
 		FrequentSet fs(path);
-		vector_add(dependsList, get_dependency(docs, mcluster, fs));
+		vector_add(dependsList, get_dependency(docs, fs));
 	}
 
 	return dependsList;
@@ -298,29 +300,15 @@ Word_ID try_find_from(IndexedDoc& doc, int target, MCluster& mcluster)
 Doc recover_omission(
 	Doc& doc,
 	Doc& context,
-	const DependencyIndex& dependency_index,
-	MCluster& mcluster)
+	WordGraph& graph)
 {
 	Doc recovered_doc;
-	IndexedDoc context_index(context, mcluster);
 	for (int token : doc)
 	{
 		recovered_doc.push_back(token);
-		// these contains token as remains
-		vector<Dependency> candidate_dependencys = dependency_index.find_with_dependent(Word_ID(token));
-		for (Dependency dependency : candidate_dependencys)
+		for (auto item : graph.word_context(token, doc, context))
 		{
-			if (missing_cword(doc, dependency.target, mcluster))
-			{
-				Word_ID target_token = try_find_from(context_index, dependency.target, mcluster);
-				if (target_token.valid())
-				{
-					int item = target_token.get();
-					int last = recovered_doc[recovered_doc.size() - 1];
-					if (item != last)
-						recovered_doc.push_back(item);
-				}
-			}
+			recovered_doc.push_back(item);
 		}
 	}
 
@@ -454,7 +442,8 @@ vector<Dependency> eval_dependency(string corpus_path)
 
 	Docs docs(corpus_path, mcluster);
 	FrequentSet fs(data_path + "L2.txt");
-	vector<Dependency> dependsList = get_dependency_mt(docs, fs);
+	//vector<Dependency> dependsList = get_dependency_mt(docs, fs);
+	vector<Dependency> dependsList = get_dependency(docs, fs);
 	save_dependency(data_path + "dependency.index", dependsList);
 	return dependsList;
 }
@@ -546,14 +535,15 @@ void resolve_omission_indexed()
 	DependencyIndex index(dependsList, &mcluster);
 	int line_count = 0;
 	cout << "Start ellipsis recovery" << endl;
+	WordGraph graph(HUNDRED_THOUSAND, dependsList, mcluster);
 	try
 	{
-		function<Doc(sentence_context)> resolver = [&index, &mcluster](sentence_context vs)
+		function<Doc(sentence_context)> resolver = [&graph](sentence_context vs)
 		{
 			if (vs.fHasContext)
 			{
 				check_sentence(vs.sentence); check_sentence(vs.context);
-				Doc outdoc = recover_omission(vs.sentence, vs.context, index, mcluster);
+				Doc outdoc = recover_omission(vs.sentence, vs.context, graph);
 				return outdoc;
 			}
 			else

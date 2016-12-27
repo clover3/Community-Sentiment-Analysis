@@ -61,3 +61,16 @@ static int max(vector<int>& v)
 
 
 bool sorted(vector<int> itemSet);
+
+template <typename T>
+vector<pair<T, T>> combination(Set2<T> s1, Set2<T> s2)
+{
+	vector<pair<T, T>> plist;
+	for (auto item : s1){
+		for (auto item2 : s2)
+		{
+			plist.push_back(pair<T, T>(item, item2));
+		}
+	}
+	return plist;
+}
