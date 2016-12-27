@@ -74,3 +74,16 @@ vector<pair<T, T>> combination(Set2<T> s1, Set2<T> s2)
 	}
 	return plist;
 }
+
+
+
+static vector<int> range(int start, int end)
+{
+	assert(end >= start);
+	vector<int> ret;
+	for (int i = start; i < end; i++)
+	{
+		ret.push_back(i);
+	}
+	return ret;
+}

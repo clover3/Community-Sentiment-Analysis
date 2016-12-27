@@ -95,9 +95,12 @@ Docs::Docs(string path, MCluster& mcluster)
 	ifstream infile(path);
 	check_file(infile, path);
 	string line;
-	while (std::getline(infile, line))
-	{
-
+#ifndef MINIDOCS
+	while (std::getline(infile, line))	{
+#else
+	for (int i = 0; i < 10000; i++){
+		std::getline(infile, line);
+#endif
 		set<int> wordSet;
 		std::istringstream iss(line);
 		int token;

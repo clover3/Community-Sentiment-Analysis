@@ -25,6 +25,67 @@ FrequentSet generate_candidate(FrequentSet L_k, const MCluster& mcluster)
 	return C_next;
 }
 
+vector<ItemSet> generate_candidate_sub(
+	const vector<ItemSet>& l1, 
+	uint st1, uint ed1, uint st2, uint ed2, 
+	const MCluster& mcluster)
+{
+	vector<ItemSet> FS;
+	for (uint i = st1; i < ed1; i++)
+	{
+		for (uint j = max(st2, st1 + 1); j < ed2; j++)
+		{
+			ItemSet set1 = l1[i];
+			ItemSet set2 = l1[j];
+			assert(sorted(set1));
+			assert(sorted(set2));
+			if (ItemSet::joinable(set1, set2, mcluster))
+			{
+				FS.push_back(ItemSet::join(set1, set2));
+			}
+		}
+	}
+	return FS;
+}
+
+FrequentSet generate_candidate_mt(FrequentSet L_k, const MCluster& mcluster)
+{
+	FrequentSet C_next;
+	vector<ItemSet> vect(L_k.begin(), L_k.end());
+	using pairint = pair<int, int>;
+	int split = 8;
+	int size = (int)vect.size();
+	int interval = size / split;
+	Set2<pairint> intervals;
+	for (int i = 0; i < split + 1; i++)
+	{
+		int start = i * interval;
+		int end = min((i+1) *interval, size);
+		intervals.insert(pair<int,int>(start, end));
+	}
+
+	vector<pair<pairint, pairint>> inputs = combination(intervals, intervals);
+
+	function<vector<ItemSet>(pair<pairint, pairint>)> worker = [mcluster, vect](pair<pairint, pairint> interval_pair){
+		int st1 = interval_pair.first.first;
+		int ed1 = interval_pair.first.second;
+		int st2 = interval_pair.second.first;
+		int ed2 = interval_pair.second.second;
+		return generate_candidate_sub(vect, st1, ed1, st2, ed2, mcluster);
+	};
+
+	vector<vector<ItemSet>> results = parallelize(inputs, worker);
+
+	for (auto v : results){
+		for (ItemSet item : v)
+		{
+			C_next.insert(item);
+		}
+	}
+
+	return C_next;
+}
+
 FrequentSet prune_candidate_v(
 	vector<ItemSet>::iterator begin, 
 	vector<ItemSet>::iterator end,
@@ -53,7 +114,6 @@ FrequentSet prune_candidate_v(
 FrequentSet prune_candidate_mt(const Docs& docs, const FrequentSet& C_k, const FrequentSet& L_prev, uint min_dup)
 {
 	int nThread = std::thread::hardware_concurrency();
-    printf("Working on %d threads\n", nThread);
 	assert(nThread >= 0 );
 	assert(nThread < 256);
 
@@ -129,24 +189,6 @@ FrequentSet build_C2(FrequentSet L1, const MCluster& mcluster)
 	sort(l1_vector);
 	uint size = L1.size();
 	C2 = build_C2_sub(l1_vector, 0, size, 0, size, mcluster);
-	/*
-	for (ItemSet set1 : L1)
-	{
-		for (ItemSet set2 : L1)
-		{
-			int lastItem1 = set1[0];
-			int lastItem2 = set2[0];
-			if (lastItem1 < lastItem2 && mcluster.different(lastItem1, lastItem2))
-			{
-				ItemSet newset;
-				newset.push_back(lastItem1);
-
-				newset.push_back(lastItem2);
-				C2.insert(newset);
-			}
-		}
-	}*/
-
 	return C2;
 }
 
@@ -216,7 +258,7 @@ void ExtractFrequent(Docs& docs, MCluster& mcluster)
 	for (int i = 2; i < 10; i++)
 	{
 		cout << "Generate C" << i+1 << "...";
-		C[i] = generate_candidate(L[i-1], mcluster);
+		C[i] = generate_candidate_mt(L[i-1], mcluster);
 		cout << C[i].size() << " sets. " << elapsed() << "ms" << endl;
 		// Make L3
 
