@@ -48,6 +48,7 @@ public:
 	}
 };
 
+void print_doc(ofstream& out, Doc& doc, map<int, string>& idx2word);
 void print_doc(Doc& doc, map<int, string>& idx2word);
 
 class Docs : public vector < Doc >

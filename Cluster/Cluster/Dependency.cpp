@@ -5,25 +5,44 @@
 #include "wordgraph.h"
 
 
-class DebugPrinter
+class RecoveryLogger 
 {
 public:
 	void printDoc(Doc& doc)
 	{
-		print_doc(doc, *m_idx2word);
+		print_doc(out, doc, *m_idx2word);
 	}
 	void init(Idx2Word* pIdx2word)
 	{
 		m_idx2word = pIdx2word;
+		out.open("Recovery.log");
+	}
+	void println(string str)
+	{
+		out << str << endl;
+	}
+	void print(string str)
+	{
+		out << str;
+	}
+	void print_token(int token)
+	{
+		out << idx2word(token);
+	}
+	void print_tokens(set<int> tokens)
+	{
+		for (int token : tokens)
+			out << " " << idx2word(token);
 	}
 	string idx2word(int idx){
 		return m_idx2word->find(idx).operator*().second;
 	}
 private:
+	ofstream out;
 	Idx2Word* m_idx2word;
 };
 
-DebugPrinter DP;
+RecoveryLogger RL;
 
 bool ignore_pattern(ItemSet itemSet)
 {
@@ -116,7 +135,7 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 	uint count_pattern = docs.count_occurence(pattern);
 	uint count_remain = docs.count_occurence(remaining);
 	uint count_item = docs.count_occurence_single(item);
-	/*
+	
 	float probability = float(count_pattern) / float(count_remain);
 	// P(item|remaining) = Count(pattern) / Count(remaining)
 
@@ -129,15 +148,16 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 	uint count_remain_except = docs.count_occurence_except(remaining, item);
 	float probability_without = float(count_remain_except) / float(count_remain);
 	// P(~item|remaining) = Count(~item & remaining) / Count(remaining)
-	 */
+	 
 	double p_ir = float(count_pattern) / total;
 	double p_i = float(count_item) / total;
 	double p_r = float(count_remain) / total;
 
 	double lift = p_ir / (p_i *p_r);
 
-	if (lift > 3 )//  probability - probability_without > 0.2)
+	//if (lift > 3 )//  probability - probability_without > 0.2)
 	//if (probability / probability_without > 2)
+	if (lift > 2 && probability > 0.2)
 	{
 		//cout << lift << " " << p_ir << " " << p_i << " " << p_r << endl;
 		return true;
@@ -323,14 +343,32 @@ Doc recover_omission(
 	WordGraph& graph)
 {
 	Doc recovered_doc;
+	RL.println("------------------");
+	RL.print("target : ");
+	RL.printDoc(doc);
+	RL.print("context : ");
+	RL.printDoc(context);
+	RL.println("");
+
 	for (int token : doc)
 	{
 		recovered_doc.push_back(token);
-		for (auto item : graph.word_context(token, doc, context))
+		auto found_set = graph.word_context(token, doc, context);
+
+		if (found_set.size() > 0)
+		{
+			RL.print("[");
+			RL.print_token(token);
+			RL.print("] : ");
+			RL.print_tokens(found_set);
+		}
+
+		for (auto item : found_set)
 		{
 			recovered_doc.push_back(item);
 		}
 	}
+	RL.println("");
 
 	return recovered_doc;
 }
@@ -462,8 +500,8 @@ vector<Dependency> eval_dependency(string corpus_path)
 
 	Docs docs(corpus_path, mcluster);
 	FrequentSet fs(data_path + "L2.txt");
-	//vector<Dependency> dependsList = get_dependency_mt(docs, fs);
-	vector<Dependency> dependsList = get_dependency(docs, fs);
+	vector<Dependency> dependsList = get_dependency_mt(docs, fs);
+	//vector<Dependency> dependsList = get_dependency(docs, fs);
 	save_dependency(data_path + "dependency.index", dependsList);
 	return dependsList;
 }
@@ -551,7 +589,7 @@ void resolve_omission_indexed()
 	cout << "loaded clusters" << endl;
 
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
-	DP.init(&idx2word);
+	RL.init(&idx2word);
 
 	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
 	cout << "loaded dependsList" << endl;
@@ -573,8 +611,8 @@ void resolve_omission_indexed()
 				return vs.sentence;
 		};
 		vector<sentence_context> v_last(vsc.begin(), vsc.end());
-		output_docs = parallelize(v_last, resolver);
-		//output_docs = serial_process(v_last, resolver);
+		//output_docs = parallelize(v_last, resolver);
+		output_docs = serial_process(v_last, resolver);
 	}
 	catch (exception* e)
 	{

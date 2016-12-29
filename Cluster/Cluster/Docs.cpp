@@ -1,6 +1,16 @@
 #include "AM.h"
 #include "Cluster.h"
 
+
+void print_doc(ofstream& out, Doc& doc, map<int, string>& idx2word)
+{
+	for (int word : doc)
+	{
+		out << idx2word[word] << " ";
+	}
+
+}
+
 void print_doc(Doc& doc, map<int,string>& idx2word)
 {
 	for (int word : doc)
