@@ -561,7 +561,7 @@ void check_sentence(Doc& doc)
 			if (item > MILLION)
 				throw exception();
 			if (item < 0)
-				throw exception("smaller than 0");
+				throw range_error("smaller than 0");
 		}
 	}
 	catch (const exception& pe){
