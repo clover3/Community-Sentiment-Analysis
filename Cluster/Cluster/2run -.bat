@@ -1,0 +1,1 @@
+..\x64\Release\Cluster.exe 2 ..\..\input\hkib_index.txt

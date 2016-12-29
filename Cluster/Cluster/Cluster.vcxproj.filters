@@ -129,16 +129,16 @@
     <None Include="4run.bat">
       <Filter>bat</Filter>
     </None>
-    <None Include="3run.bat">
-      <Filter>bat</Filter>
-    </None>
     <None Include="2run -.bat">
       <Filter>bat</Filter>
     </None>
     <None Include="1run.bat">
       <Filter>bat</Filter>
     </None>
-    <None Include="5run.bat">
+    <None Include="3_EvalDependecny.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="5_RecoverEllipsis.bat">
       <Filter>bat</Filter>
     </None>
   </ItemGroup>
