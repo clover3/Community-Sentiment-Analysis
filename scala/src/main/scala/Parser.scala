@@ -4,7 +4,7 @@ import kaist.cilab.parser.berkeleyadaptation.BerkeleyParserWrapper
 /**
   * Created by user on 2017-01-18.
   */
-object kaistparser {
+object KaistParser {
   val parserPath: String = "./models/parser/KorGrammar_BerkF_FIN"
   val bpw: BerkeleyParserWrapper = new BerkeleyParserWrapper(parserPath) // Path for parser model
 
@@ -15,13 +15,23 @@ object kaistparser {
     def allStr : String =
       if(childs == Nil) str
       else (childs.map (_.allStr)).mkString("")
+    def allTags : String =
+      if(childs == Nil) tokenType + " " + str
+      else (childs.map (_.allTags)).mkString("")
   }
 
   class ParseTree(val root: Node)
 
 
   def parse(rawSentence : String) : ParseTree = {
-    val treeString : String = bpw.parse(rawSentence)
+    val replaceParen = rawSentence.contains('(') || rawSentence.contains(')')
+
+    def removeCharsInsideParen(str:String) : String = str.replaceAll("\\(.*?\\)", "")
+
+    val inputSentence = if(replaceParen) removeCharsInsideParen(rawSentence)
+    else rawSentence
+
+    val treeString : String = bpw.parse(inputSentence)
 
     def subParse(str: String) : Node = {
       val len = str.length
