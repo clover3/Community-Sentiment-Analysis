@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-#os.environ['THEANO_FLAGS'] = 'device=gpu1'
 
-from clover_lib import *
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers import Dense
@@ -17,6 +15,10 @@ import cPickle
 import numpy
 import os
 import random
+from KoreanNLP import *
+
+from clover_lib import *
+from CNN_common import *
 
 seed = 7
 numpy.random.seed(seed)
@@ -32,7 +34,7 @@ def load_vec(fname, vocab, binary = True):
     """
     Loads 300x1 word vecs from Google (Mikolov) word2vec
     """
-    print("  Loading word2vec...")
+    print("Loading word2vec...")
     #w2v_cache = "cache\\w2v"
     #if os.path.isfile(w2v_cache):
     #    return cPickle.load(open(w2v_cache,"rb"))
@@ -63,7 +65,7 @@ def load_vec(fname, vocab, binary = True):
                 word_vecs[word] = getline()
             else:
                 getline()
-    print("  Loaded word2vec...")
+    print("Loaded word2vec...")
 #    cPickle.dump(word_vecs, open(w2v_cache, "wb"))
     return word_vecs
 
@@ -75,39 +77,24 @@ def get_voca(text_list):
     return voca
 
 
-def build_index(voca, w2v, k):
-    print("building index..")
-    predefined_word = 5
-    index = predefined_word
-    word2idx = dict()
-    idx2vect = numpy.zeros(shape=(len(voca) + predefined_word, k), dtype='float32')
-
-    for i in range(predefined_word):
-        #idx2vect[i] = numpy.zeros(k, dtype='float32')
-        idx2vect[i] = numpy.random.uniform(-0.25,0.25,k)
-
-    f = open("missing_w2v.txt", "w")
-    if w2v is not None:
-        for word in w2v.keys():
-            word2idx[word] = index
-            idx2vect[index] = w2v[word]
-            index += 1
-
-    match_count = index
-
-    for word in voca:
-        if word not in word2idx:
-            f.write(word + "\n")
-            word2idx[word] = index
-            idx2vect[index] = numpy.zeros(k, dtype='float32')
-            index += 1
-    f.close()
-
-    print("w2v {} of {} matched".format(match_count, index))
-    return word2idx, idx2vect
-
-
 class DataSet:
+    def __init__(self, dataset_x, dataset_y, idx2vect, len_embedding):
+        data = zip(dataset_x, dataset_y)
+        numpy.random.shuffle(data)
+        len_train = int(len(data) * 0.9)
+        train_x, train_y = zip(*data[0:len_train])
+        test_x, test_y = zip(*data[len_train:])
+
+        self.train_x = numpy.array(train_x)
+        self.train_y = numpy.array(train_y)
+        self.test_x = numpy.array(test_x)
+        self.test_y = numpy.array(test_y)
+
+        self.idx2vect = idx2vect
+        self.len_embedding = len_embedding
+
+
+class EMDataSet:
     def __init__(self, dataset_x, data_set_e, dataset_y, idx2vect, len_embedding, keywords2idx):
         data = zip(dataset_x, data_set_e, dataset_y)
         numpy.random.shuffle(data)
@@ -125,17 +112,6 @@ class DataSet:
         self.keyword2idx = keywords2idx
         self.idx2vect = idx2vect
         self.len_embedding = len_embedding
-
-def  tokenize(list_str):
-    from konlpy.tag import Twitter
-    from konlpy.tag import Hannanum
-    lib = Twitter()
-
-    arr = []
-    for sentence in list_str:
-        tokens = map(lambda x:x[0].encode('utf8'), lib.pos(sentence))
-        arr.append(tokens)
-    return arr
 
 
 def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension):
@@ -212,29 +188,116 @@ def set2idxmap(s):
         cnt += 1
     return d
 
-def load_data_label(label_path, path_article, w2v_path, dimension):
-    IDX_R_THREAD = 1
-    IDX_R_ARTICLE = 2
-    IDX_R_KEYWORD= 3
-    IDX_R_LABEL = 4
+
+def label2hotv(label):
+    if label[IDX_R_LABEL] == '3':
+        return (1, 0, 0)
+    elif label[IDX_R_LABEL] == '2':
+        return (0, 1, 0)
+    elif label[IDX_R_LABEL] == '1':
+        return (0, 0, 1)
+    else:
+        raise Exception("Not expected")
+
+
+def get_article_dic(articles):
+    article_dic = dict()
+    for article in articles:
+        article_id = article[IDX_ARTICLE_ID]
+        thread_id = article[IDX_THREAD_ID]
+        article_dic[(article_id, thread_id)] = article
+    return article_dic
+
+def all_voca(articles):
+    def getcontent(article):
+        return article[IDX_TITLE] + ". " + article[IDX_CONTENT]
+    #texts = [getcontent(article) for article in articles]
+    #result =  set(flatten(tokenize(texts)))
+    #save_list(list(result), "voca.txt")
+    result_u = load_list("voca.txt")
+    result = [str(e.encode("utf-8")) for e in result_u]
+    return result
+
+
+
+
+IDX_R_THREAD = 1
+IDX_R_ARTICLE = 2
+IDX_R_KEYWORD = 3
+IDX_R_LABEL = 4
+def load_dats_split_sa(label_path, path_article, w2v_path, len_embedding):
     print("Loading Data...")
     # load label table
+    labels = load_label(label_path)
+    articles = load_csv(path_article)
+    content = articles[0][IDX_CONTENT]
+    voca = all_voca(articles)
+
+    w2v = load_vec(w2v_path, voca, False)
+    print("  Loaded w2v len = {}".format(len(w2v)) )
+    word2idx, idx2vect = build_index(voca, w2v, len_embedding)
+    def convert2index(tokens):
+        result = []
+        for token in tokens[:len_sentence]:
+            try:
+                result.append(word2idx[token])
+            except KeyError as e:
+                print "key not found {} (type={})".format(token, type(token))
+                result.append(0)
+
+        while len(result) < len_sentence:
+            result.append(0)
+        return result
+
+    article_dic = get_article_dic(articles)
+    splitter = SentenceSplitter()
+
+    def extract_x(label):
+        article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
+        if len(article[IDX_TITLE]) > 0 :
+            content = article[IDX_TITLE] + ". " + article[IDX_CONTENT]
+        else:
+            content = article[IDX_CONTENT]
+        sentences = split_sentence(content)
+
+        def contain_keyword(str):
+            return label[IDX_R_KEYWORD] in str
+        focus_sentences = list(filter(contain_keyword, sentences))
+        tokens = flatten(tokenize(focus_sentences))
+        return convert2index(tokens)
+
+    print "Total labels : " + str(len(labels))
+    data_set_x = numpy.array([extract_x(label) for label in labels])
+    data_set_y = [label2hotv(label) for label in labels]
+
+    return DataSet(data_set_x, data_set_y, idx2vect, len_embedding)
+
+def load_label(label_path):
     labels = load_csv(label_path)
-    labels = [label for label in labels if label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' or label[IDX_R_LABEL] == '2' ]
+    labels = [label for label in labels if
+              label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' or label[IDX_R_LABEL] == '2']
     labels_pos = [label for label in labels if label[IDX_R_LABEL] == '1']
     labels_neu = [label for label in labels if label[IDX_R_LABEL] == '2']
     labels_neg = [label for label in labels if label[IDX_R_LABEL] == '3']
-
-    labels = labels_pos + labels_neu + labels_neg
-    random.shuffle(labels)
-
-    all_keyword = set([label[IDX_R_KEYWORD] for label in labels])
-    keyword2idx = set2idxmap(all_keyword)
 
     n_pos =  len([label for label in labels if label[IDX_R_LABEL] == '1'])
     n_neu =  len([label for label in labels if label[IDX_R_LABEL] == '2'])
     n_neg = len([label for label in labels if label[IDX_R_LABEL] == '3'])
     print("  Corpus size : positive={} negative={} neutral={}...".format(n_pos, n_neg, n_neu) )
+
+    labels = labels_pos + labels_neu + labels_neg
+    random.shuffle(labels)
+    return labels
+
+
+def load_data_label_old(label_path, path_article, w2v_path, dimension):
+
+    print("Loading Data...")
+    # load label table
+    labels = load_label(label_path)
+    all_keyword = set([label[IDX_R_KEYWORD] for label in labels])
+    keyword2idx = set2idxmap(all_keyword)
+
     print("  Loading articles...")
     # load article table
     articles = load_csv(path_article)
@@ -268,9 +331,6 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
                     return i
 
             return 0
-            print(keyword)
-            print(article[IDX_CONTENT])
-            print(scan)
         #  lookup the corpus to find specified article
 
         article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
@@ -299,27 +359,12 @@ def load_data_label(label_path, path_article, w2v_path, dimension):
                 result.append(0)
         return result
 
-    def label2x(label):
-        index = indexize(label)
-        keyword = keyword2idx[label[IDX_R_KEYWORD]]
-        return numpy.array([index, keyword])
-
     data_set_x = numpy.array([indexize(label) for label in labels])
     data_set_e = numpy.array([ keyword2idx[label[IDX_R_KEYWORD]] for label in labels])
-    def label2hotv(label):
-        if label[IDX_R_LABEL] == '3':
-            return (1,0,0)
-        elif label[IDX_R_LABEL] == '2':
-            return (0,1,0)
-        elif label[IDX_R_LABEL] == '1':
-            return (0,0,1)
-        else:
-            raise Exception("Not expected")
-
 
     data_set_y = [label2hotv(label) for label in labels]
 
-    return DataSet(data_set_x, data_set_e, data_set_y, idx2vect, dimension, keyword2idx)
+    return EMDataSet(data_set_x, data_set_e, data_set_y, idx2vect, dimension, keyword2idx)
 
 
 def load_data(pos_path, neg_path, w2v_path, dimension):
@@ -342,7 +387,7 @@ def load_data(pos_path, neg_path, w2v_path, dimension):
 
     dataset_x = numpy.array(vectors)
     dataset_y = len(raw_pos)*[1] + len(raw_neg) * [0]
-    return DataSet(dataset_x, dataset_y, idx2vect, dimension)
+    return EMDataSet(dataset_x, dataset_y, idx2vect, dimension)
 
 
 def load_data_gt(pos_path, neg_path, w2v_path, dimension):
@@ -371,7 +416,7 @@ def load_data_gt(pos_path, neg_path, w2v_path, dimension):
 
     dataset_x = numpy.array(vectors)
     dataset_y = len(raw_pos)*[(1,0)] + len(raw_neg) * [(0,1)]
-    return DataSet(dataset_x, dataset_y, idx2vect, dimension)
+    return EMDataSet(dataset_x, dataset_y, idx2vect, dimension)
 
 
 def load_data_carsurvey(path_label, w2v_path, dimension):
@@ -406,11 +451,53 @@ def load_data_carsurvey(path_label, w2v_path, dimension):
             raise "Unexpected"
 
     dataset_y = [ text2label(line[4]) for line in data]
-    return DataSet(dataset_x, dataset_y, idx2vect, dimension)
+    return EMDataSet(dataset_x, dataset_y, idx2vect, dimension)
 
 
 entity_embed_length = 50
-def buildModel(len_embedding, data, filter_sizes):
+
+
+def get_simple_model(len_embedding, data, filter_sizes):
+    dropout_prob = (0.3, 0.3)
+    num_filters = 200
+    hidden_dims = 100
+    embedding_dim = len_embedding
+    size_voca = len(data.idx2vect)
+
+    sent_input = Input(shape=(len_sentence,), dtype='int32', name='sent_level_input')
+
+    sent_x = Embedding(size_voca, embedding_dim,
+      input_length=len_sentence, weights=[data.idx2vect])(sent_input)
+
+
+    sent_x = Dropout(dropout_prob[0], input_shape=(len_sentence, embedding_dim))(sent_x)
+
+    multiple_filter_output= []
+    for i in xrange(len(filter_sizes)):
+        conv = Convolution1D(nb_filter=num_filters,
+          filter_length= filter_sizes[i],
+          border_mode='valid',
+          bias=True,
+          activation='relu',
+          subsample_length=1)(sent_x)
+        pool = MaxPooling1D(pool_length = len_sentence - filter_sizes[i] + 1)(conv)
+        multiple_filter_output.append(Flatten()(pool))
+
+    sent_v = merge(multiple_filter_output, mode = 'concat')
+
+    sent_v = Dense(hidden_dims)(sent_v)
+    sent_v = Dropout(dropout_prob[1])(sent_v)
+    sent_v = Activation('relu')(sent_v)
+    sent_loss = Dense(3, activation='Sigmoid', name='sent_level_output')(sent_v)
+
+    adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08)
+
+    model = Model(input=sent_input, output=sent_loss)
+    model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
+    return model
+
+
+def get_entity_masking_model(len_embedding, data, filter_sizes):
     num_class = 3
     num_filters = 500
     embedding_dim = len_embedding
@@ -593,10 +680,10 @@ def run_korean():
     path_article = "D:\\data\\input\\bobae_car_tkn_twitter.csv"
     #path_article = "D:\\data\\input\\babae_car_recovered2.csv"
 
-    data = load_data_label(path_lable, path_article, w2v_path, len_embedding)
+    data = load_data_label_old(path_lable, path_article, w2v_path, len_embedding)
 
     #model = get_model_dirty(len_embedding, data, [3,4,5,6,7])
-    model = buildModel(len_embedding, data, [3,4,5,6,7])
+    model = get_entity_masking_model(len_embedding, data, [3, 4, 5, 6, 7])
 
     print("Training Model...")
     model.fit([data.train_x, data.train_e], data.train_y,
@@ -629,15 +716,40 @@ def run_agreement():
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
+def run_split_sa():
+    len_embedding = 50
+
+    load_pickle = True
+    if load_pickle:
+        data = pickle.load(open("sa_data","rb"))
+        print("Loading data from pickle")
+    else:
+        path_lable = "..\\input\\corpus_samba.csv"
+        w2v_path = "..\\input\\korean_word2vec_wv_50.txt"
+        path_article = "..\\input\\bobae_car_tkn_twitter.csv"
+        data = load_dats_split_sa(path_lable, path_article, w2v_path, len_embedding)
+        pickle.dump(data, open("sa_data", "wb"))
+
+
+    model = get_simple_model(len_embedding, data, [3, 4])
+
+    print("Training Model...")
+    model.fit(data.train_x, data.train_y,
+              batch_size=50,
+              nb_epoch=100,
+              validation_data=(data.test_x, data.test_y),
+              shuffle=True)
+
+    return model
 
 
 import pickle
 def save_word2idx():
     len_embedding = 50
 
-    path_lable = "D:\\data\\corpus_samba.csv"
-    w2v_path = "D:\\data\\input\\korean_word2vec_wv_50.txt"
-    path_article = "D:\\data\\input\\bobae_car_tkn_twitter.csv"
+    path_lable = "..\\input\\corpus_samba.csv"
+    w2v_path = "..\\input\\korean_word2vec_wv_50.txt"
+    path_article = "..\\input\\bobae_car_tkn_twitter.csv"
     word2idx = load_data_get_word2idx(path_lable, path_article, w2v_path, len_embedding)
 
     pickle.dump(word2idx, open("word2idx","wb"))
@@ -648,4 +760,4 @@ if __name__ == "__main__":
     #model.save("model")
     #run_agreement()
     #run_carsurve()
-    run_korean()
+    run_split_sa()

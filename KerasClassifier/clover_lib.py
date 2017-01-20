@@ -40,6 +40,14 @@ def load_list(path):
         list = f.read().splitlines()
         return list
 
+def save_list(data, path):
+    import sys
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
+
+    with codecs.open(path, "wb", 'utf-8') as f:
+        for entry in data:
+            f.write(entry+"\n")
 
 # if contain any keyword, return the keyword. else, return null string
 def contain_any(text, iterable):
@@ -108,3 +116,4 @@ class FailCounter:
 
 def flatten(z):
     return [y for x in z for y in x]
+
