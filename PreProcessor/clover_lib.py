@@ -52,13 +52,13 @@ def load_csv_utf(path):
         return [line for line in csv.reader(af)]
 
 def save_csv_utf(data, path):
-    with open(path, "rb") as f:
+    with open(path, "wb") as f:
         af =  codecs.getwriter("utf-8")(f)
         w = csv.writer(af)
         w.writerows(data)
 
 def save_csv_utf2(data, path):
-    with codecs.open(path, "wb", 'utf-8') as f:
+    with codecs.open(path, "wb", 'utf-8', errors="ignore") as f:
         csv.writer(f).writerows(data)
 
 def load_list(path):
@@ -66,7 +66,8 @@ def load_list(path):
         list = f.read().splitlines()
         return list
 
-
+def unicode2str(uni):
+    return uni.encode("utf-8")
 
 
 # if contain any keyword, return the keyword. else, return null string
@@ -104,6 +105,19 @@ def parse_token(articles):
         except Exception as e:
             print(e)
     return result
+
+
+def remove_newline(articles):
+    result = []
+    for article in articles:
+        try:
+            content = article[IDX_CONTENT].replace("\n"," ").replace("\r", " ")
+            new_article = article[:IDX_CONTENT] + [content] + article[IDX_CONTENT+1:]
+            result.append(new_article)
+        except Exception as e:
+            print(e)
+    return result
+
 
 
 def output_str_list(path, str_list):

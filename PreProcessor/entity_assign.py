@@ -1,3 +1,4 @@
+# -*- coding: euc-kr -*-
 from clover_lib import *
 import itertools
 from konlpy.tag import Kkma
@@ -22,7 +23,9 @@ def remove_substring(word_list):
 def match_all(content, lst):
     words = []
     for item in lst:
-        index = content.lower().find(item.lower())
+        l_content = content.lower()
+        l_item = item.lower().encode("utf-8")
+        index = l_content.find(l_item)
         if index == 0 :
             words.append(item)
         elif index > 0 :
@@ -67,7 +70,7 @@ def filter_article(data, given_filter):
 
 
 def get_filtered_bobaedream():
-    keyword_hyundai = ["í˜„ëŒ€","í˜„ê¸°","í‰ê¸°","ê¸°ì•„","hyundae"]
+    keyword_hyundai = ["Çö´ë","Çö±â","Èä±â","±â¾Æ","hyundae"]
     car_keyword = load_list("input\\car_keyword.txt")
     keywords = car_keyword
 
@@ -83,8 +86,8 @@ def get_filtered_bobaedream():
     print("Filtered article :" + str(len(filtered_data)))
 
 
-def analyze_bobaedream():
-    keyword_hyundai = ["í˜„ëŒ€","í˜„ê¸°","í‰ê¸°","ê¸°ì•„","hyundae","í˜„ê¸°ì°¨","í˜„ëŒ€ì°¨"]
+def make_corpus():
+    keyword_hyundai = ["Çö´ë","Çö±â","Èä±â","±â¾Æ","hyundae","Çö±âÂ÷","Çö´ëÂ÷"]
     car_keyword = load_list("input\\car_keyword.txt")
     keywords = car_keyword + keyword_hyundai
     kkma = Kkma()
@@ -111,4 +114,32 @@ def analyze_bobaedream():
     #save_csv_euc_kr(corpus, "input\\corpus.csv")
     save_csv_utf(corpus, "input\\corpus.csv")
 
-analyze_bobaedream()
+def analyze_entity_proportion():
+    car_keyword = load_list("..\\input\\car_keyword2.txt")
+    keywords = car_keyword
+
+    data = load_csv_euc_kr("..\\input\\bobae_car_euc.csv")
+    corpus = []
+
+    corpus_index = 0
+    for article in data:
+        content = article[IDX_TITLE] + "\n" + article[IDX_CONTENT]
+        if article[IDX_TEXT_TYPE] == '0':  # and len(content) > 200 :
+            continue
+        # sentences = kkma.sentences(content)
+        # for text in sentences:
+        text = content
+        words = match_all(text, keywords)
+        if len(words) > 0:
+            #           found_words = ",".join(words)
+            #           print("[{}] : {}".format(found_words, text))
+            for word in words:
+                entry = [corpus_index, article[IDX_ARTICLE_ID], article[IDX_THREAD_ID], article[IDX_CONTENT], word, 0]
+                corpus.append(entry)
+                corpus_index += 1
+
+
+    print("total article : {} / entity article : {}  : {}%".format(len(data), corpus_index, float(corpus_index)/len(data)))
+
+if __name__ == '__main__':
+    analyze_entity_proportion()

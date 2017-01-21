@@ -29,7 +29,7 @@ TFIDF_DICT_PICKLE_PATH = 'model\\tfidf.dict'
 
 
 class Option(object):
-    def __init__(self, o_input, isFail= False):
+    def __init__(self, o_input, isFail=False):
         self.fFail = isFail
         self.obj = o_input
 
@@ -107,7 +107,7 @@ class LDAAnalyzer:
         corpus = [self.dictionary.doc2bow(text) for text in texts]
 
         # generate LDA model
-        self.model = gensim.models.ldamulticore.LdaMulticore(corpus, num_topics=100, id2word = self.dictionary, passes=20)
+        self.model = gensim.models.ldamulticore.LdaMulticore(corpus, num_topics=100, id2word=self.dictionary, passes=20)
         # lda_model = gensim.models.ldamodel.LdaModel(corpus, num_topics=20, id2word = dictionary, passes=20)
 
         self.model.save(LDA_PICKLE_PATH)
@@ -115,12 +115,13 @@ class LDAAnalyzer:
     def dist(self, text1, text2):
         t1 = self.get_topic(text1)
         t2 = self.get_topic(text2)
-        return gensim.matutils.cossim(t1,t2)
+        return gensim.matutils.cossim(t1, t2)
 
 
 class UserNotFoundError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
@@ -128,11 +129,12 @@ class UserNotFoundError(Exception):
 class HeadNotFoundError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
 
-def texts_by(texts, user): # type : (List(text), string) -> List(text)
+def texts_by(texts, user):  # type : (List(text), string) -> List(text)
     result = []
     for text in texts:
         if text[IDX_AUTHOR_ID] == user:
@@ -164,6 +166,7 @@ def resolve_target_and_eval(data):
     ----
     6. Text Type = 2 그외의 경우 => 의존 텍스트 후보 중에 LDA Topic 유사도가 가장 높은 글
     """
+
     def find_target(list_candidate, text):
         user = text[IDX_AUTHOR_ID]
         list_filtered = list(filter(lambda x: x[IDX_AUTHOR_ID] != user, list_candidate))
@@ -191,7 +194,7 @@ def resolve_target_and_eval(data):
         prev_coc = []
 
         for post in texts:
-            if post[IDX_TEXT_TYPE] not in ['0','1','2']:
+            if post[IDX_TEXT_TYPE] not in ['0', '1', '2']:
                 raise ValueError("Unexpected Case : " + str(post[IDX_TEXT_TYPE]))
 
             # update stack info
@@ -206,7 +209,7 @@ def resolve_target_and_eval(data):
             def handle_case1():
                 if post[IDX_TEXT_TYPE] == '0':  ### Case 1
                     case_counter.add_count(1)
-                    return Option((0,0))
+                    return Option((0, 0))
                 else:
                     return Option.fail()
 
@@ -221,10 +224,10 @@ def resolve_target_and_eval(data):
                 if post[IDX_TEXT_TYPE] != '2':
                     return Option.fail()
 
-                if len(prev_coc) == 0 :
+                if len(prev_coc) == 0:
                     case_counter.add_count(3)
                     if get_current_comment() is None:
-                        return Option((0,0))
+                        return Option((0, 0))
                     return Option(get_thread_article_id(get_current_comment()))
                 else:
                     return Option.fail()
@@ -284,9 +287,9 @@ def resolve_target_and_eval(data):
                     return Option(get_thread_article_id(target))
                 except Exception as e:
                     print(e)
-                    return Option((0,0))
+                    return Option((0, 0))
 
-            ret = handle_case1()       ### Case 3
+            ret = handle_case1()  ### Case 3
             if ret.isFail():
                 ret = handle_case2()
             if ret.isFail():
@@ -325,8 +328,8 @@ def resolve_target_and_eval(data):
 def test_on_guldang():
     cursor = 0000
     size = 100000
-    data = load_csv_euc_kr("input\\clean_guldang_tkn.csv")[cursor:cursor+size]
-    #data = load_csv_euc_kr("input\\guldang_10000_tkn.csv")
+    data = load_csv_euc_kr("input\\clean_guldang_tkn.csv")[cursor:cursor + size]
+    # data = load_csv_euc_kr("input\\guldang_10000_tkn.csv")
     # Format
     """
     rating
@@ -347,8 +350,9 @@ def test_on_guldang():
 
     def print_invalid_data():
         for text in data:
-            if len(text) < 9 :
+            if len(text) < 9:
                 print(text)
+
     print_invalid_data()
 
     def get_text_list(csv_data):
@@ -360,7 +364,7 @@ def test_on_guldang():
     print("DEBUG : Creating TFIDF Model...")
     tfidf_model = TFIDFAnalyzer()
     tfidf_model.create_model(corpus)
-    #tfidf_model.load_from_file("tfidf")
+    # tfidf_model.load_from_file("tfidf")
 
     # Init LDA
     lda_model = LDAAnalyzer()
@@ -370,7 +374,7 @@ def test_on_guldang():
         time1 = time.time()
         lda_model.create_lda_model(corpus)
         time2 = time.time()
-        print("DEBUG : Created LDA Model (elapsed : {})".format(time2-time1))
+        print("DEBUG : Created LDA Model (elapsed : {})".format(time2 - time1))
     else:
         print("DEBUG : Loading LDA Model...")
         lda_model.load_from_file(LDA_PICKLE_PATH)
@@ -413,11 +417,10 @@ def analyze_thread(counter_lda, counter_tfidf, counter_blind, lda_model, tfidf_m
                         def tfidf_dist(text_target):
                             return tfidf_model.dist(text_target, referrer)
 
-
                         lda_min, lda_min_idx = get_min_dist(lda_dist, prev)
                         tfidf_min, tfidf_min_idx = get_min_dist(tfidf_dist, prev)
                         counter_blind.suc()
-                        counter_blind.add_fail(len(prev)-1)
+                        counter_blind.add_fail(len(prev) - 1)
 
                         # compare min_dist with  ref_dist
                         ref_dist = lda_model.dist(referrer, referee)
@@ -429,12 +432,12 @@ def analyze_thread(counter_lda, counter_tfidf, counter_blind, lda_model, tfidf_m
                                 counter.fail()
                                 # compare latest and text
                                 logging.info("------------------")
-                                logging.info("Thread {}. {} <- {}".format(referee[IDX_THREAD_ID], referee[IDX_THREAD_ID],
-                                                                          referrer[IDX_ARTICLE_ID]))
+                                logging.info(
+                                    "Thread {}. {} <- {}".format(referee[IDX_THREAD_ID], referee[IDX_THREAD_ID],
+                                                                 referrer[IDX_ARTICLE_ID]))
                                 logging.info("Real  target(Dist={}) : {}".format(ref_dist, referee[IDX_CONTENT]))
                                 logging.info("Guess target(Dist={} : {}".format(min_found, prev[idx_min][IDX_CONTENT]))
                                 logging.info("Referrer -> {} ".format(referrer[IDX_CONTENT]))
-
 
                         fail_check(counter_lda, lda_min, lda_min_idx)
                         fail_check(counter_tfidf, tfidf_min, tfidf_min_idx)
@@ -443,16 +446,18 @@ def analyze_thread(counter_lda, counter_tfidf, counter_blind, lda_model, tfidf_m
                         abc = ""
                         logging.info("Exception : user = " + e.value)
             prev.append(text)
-    except Exception as e :
+    except Exception as e:
         print(e)
 
-def validate(data): # type : List() -> ()
+
+def validate(data):  # type : List() -> ()
     for entry in data:
-        assert(int(entry[IDX_ARTICLE_ID]) > 0)
-        assert(int(entry[IDX_THREAD_ID]) > 0 )
+        assert (int(entry[IDX_ARTICLE_ID]) > 0)
+        assert (int(entry[IDX_THREAD_ID]) > 0)
         ttype = entry[IDX_TEXT_TYPE]
-        assert (ttype =='0' or ttype == '1' or ttype == '2')
-        assert(type(entry[IDX_TOKENS])==type([1,2,3]))
+        assert (ttype == '0' or ttype == '1' or ttype == '2')
+        assert (type(entry[IDX_TOKENS]) == type([1, 2, 3]))
+
 
 def test_bobae():
     cursor = 0
@@ -469,8 +474,9 @@ IDX_R_ARTICLE = 2
 IDX_R_KEYWORD = 3
 IDX_R_LABEL = 4
 
+
 def validate_a_contain_b(a, b):
-    a_set = set([get_thread_article_id(line) for line in a ])
+    a_set = set([get_thread_article_id(line) for line in a])
 
     def get_thread_article_id_r(post):
         return int(post[IDX_R_THREAD]), int(post[IDX_R_ARTICLE])
@@ -486,12 +492,12 @@ def load_idx2word(path):
     word2idx = dict()
     for line in data:
         idx = int(line.split()[0])
-        raw_word =(line.split())[1].strip()
-        assert type(raw_word)==type(u"hello")
+        raw_word = (line.split())[1].strip()
+        assert type(raw_word) == type(u"hello")
 
         word = raw_word.encode("utf-8")
 
-        assert type(word)==type("word")
+        assert type(word) == type("word")
         idx2word[idx] = word
         word2idx[word] = idx
     return idx2word, word2idx
@@ -503,7 +509,7 @@ def load_rules(path, word2idx):
     def transform(line):
         item = int(line.split()[0])
         condition = int(line.split())[1]
-        return item,condition
+        return item, condition
 
     return [transform(line) for line in data]
 
@@ -520,8 +526,8 @@ def to_indexed_string(tokens, word2idx):
     return " ".join(index_tokens)
 
 
-def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (int,int)) -> List(String)
-    data_dic = dict() # Dict( (int,int) -> text )
+def extract_pair(data, related_dic, word2idx):  # List(text), Dic((int,int) -> (int,int)) -> List(String)
+    data_dic = dict()  # Dict( (int,int) -> text )
 
     for post in data:
         index = get_thread_article_id(post)
@@ -531,10 +537,10 @@ def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (i
         index = get_thread_article_id(post)
         related_index = related_dic[index]
         out_str = to_indexed_string(post[IDX_TOKENS], word2idx)
-        if related_index == (0,0):
+        if related_index == (0, 0):
             None
-        else :
-            related_post = data_dic[related_index] # text
+        else:
+            related_post = data_dic[related_index]  # text
             post_fix = to_indexed_string(related_post[IDX_TOKENS], word2idx)
             out_str += (" - " + post_fix)
         return out_str
@@ -542,9 +548,48 @@ def extract_pair(data, related_dic, word2idx): # List(text), Dic((int,int) -> (i
     return [post2pair_str(post) for post in data]
 
 
+def gen_data_dic(data):
+    data_dic = dict()  # Dict( (int,int) -> text )
+    for post in data:
+        index = get_thread_article_id(post)
+        data_dic[index] = post
+    return data_dic
+
+
+def agreement_corpus():
+    # idx , article_id, thread_id, content , context,
+
+    import sys
+    reload(sys)
+    sys.setdefaultencoding('utf8')
+
+    cursor = 0
+    size = 100000
+    data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+    save_csv_utf2(data, "tmp")
+    data_token_parsed = parse_token(data)
+    data_no_newline = remove_newline(data_token_parsed)
+    print data_no_newline[0]
+    validate(data_no_newline)
+    related_dic = resolve_target_and_eval(data_no_newline)
+
+    def has_context(article):
+        return (0,0) != related_dic[get_thread_article_id(article)]
+
+    data_dic = gen_data_dic(data_no_newline)
+
+    def generator(article, idx):
+        context = data_dic[related_dic[get_thread_article_id(article)]][IDX_CONTENT]
+        line = [idx, article[IDX_ARTICLE_ID], article[IDX_THREAD_ID], article[IDX_CONTENT], context]
+        return line
+
+    data_to_print = filter(has_context, data_no_newline)
+
+    corpus = [generator(line, i) for i, line in enumerate(data_to_print)]
+    save_csv_utf2(corpus, "..\\input\\agree_corpus.csv")
+
 
 def process_bobae():
-
     idx2word, word2idx = load_idx2word("..\\input\\idx2word")
 
     cursor = 0
@@ -574,10 +619,9 @@ def load_recovered(path, idx2word):
     return [line2int_list(line) for line in raw_list]
 
 
-
 def replace_token(articles, replace):
     result = []
-    for i,article in enumerate(articles):
+    for i, article in enumerate(articles):
         try:
             tokens = article[IDX_TOKENS].split('/')
             n_article = article[0:IDX_TOKENS] + [replace[i]]
@@ -585,6 +629,7 @@ def replace_token(articles, replace):
         except Exception as e:
             print(e)
     return result
+
 
 def apply_recovered():
     idx2word, word2idx = load_idx2word("..\\input\\idx2word")
@@ -598,14 +643,30 @@ def apply_recovered():
     print lined[0]
 
     data_token_parsed = replace_token(data, lined)
-    save_csv(data_token_parsed, "babae_car_recovered.csv")
+    save_csv(data_token_parsed, "babae_car_recovered3.csv")
 
+
+def load_reddit():
+
+    IDX_REDDIT_TITLE = 1
+    IDX_REDDIT_CONTENT = 3
+    IDX_REDDIT_AUTHOR = 4
+    IDX_REDDIT_ARTICLE_ID = 6
+    IDX_REDDIT_THREAD_ID = 7
+    IDX_REDDIT_DATE = 8
+
+    cursor = 0
+    size = 1000
+    data = load_csv_utf("C:\work\Data\\reddit\\reddit_cars.csv")[cursor:cursor + size]
+    for line in data :
+        print line[IDX_REDDIT_AUTHOR]
 
 
 if __name__ == '__main__':
     freeze_support()
-    #test_on_guldang()
+    # test_on_guldang()
+    load_reddit()
+    # process_bobae()
+    # apply_recovered()
+# create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
 
-    #process_bobae()
-    apply_recovered()
-#create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
