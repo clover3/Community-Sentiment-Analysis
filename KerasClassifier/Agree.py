@@ -3,17 +3,16 @@ from CNN_common import *
 
 
 from clover_lib import *
-from keras.models import Sequential
+from SA_Label import *
+
 from keras.layers import Convolution1D, Convolution2D, MaxPooling1D, MaxPooling2D, Embedding, Reshape, Lambda
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, merge
 from keras.models import Model
-from keras.optimizers import SGD
 from keras.optimizers import Adadelta
-import numpy
-import random
 
-class Agree_DataSet:
+
+class AgreeDataSet:
     def __init__(self, dataset_x, dataset_y, idx2vect, len_embedding):
         data = zip(dataset_x, dataset_y)
         numpy.random.shuffle(data)
@@ -29,11 +28,8 @@ class Agree_DataSet:
         self.idx2vect = idx2vect
         self.len_embedding = len_embedding
 
+
 def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sentence):
-    IDX_R_THREAD = 1
-    IDX_R_ARTICLE = 2
-    IDX_R_KEYWORD= 3
-    IDX_R_LABEL = 4
     print("Loading Data...")
     # load label table
     raw_neu = codecs.open(neu_path, "r",encoding="euc-kr", errors="replace").readlines()
@@ -44,7 +40,7 @@ def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sente
     print("  Loading articles...")
     # load article table
     print("  parsing tokens...")
-    tokened_data = tokenize(raw_data)
+    tokened_data = tokenize_list(raw_data)
 
     voca = set(flatten(tokened_data))
     print(voca)
@@ -66,7 +62,7 @@ def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sente
     dataset_x = numpy.array(vectors)
     dataset_y = len(raw_neu) * [[0,0]]+ len(raw_pos) * [[1,0]] + len(raw_neg) * [[0,1]]
 
-    return Agree_DataSet(dataset_x, dataset_y, idx2vect, dimension)
+    return AgreeDataSet(dataset_x, dataset_y, idx2vect, dimension)
 
 
 def get_model_agree(len_sentence, len_embedding, data, filter_sizes):
@@ -107,6 +103,7 @@ def get_model_agree(len_sentence, len_embedding, data, filter_sizes):
     model = Model(input=sent_input, output=sent_loss)
     model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
     return model
+
 
 def run_agreement():
     len_embedding = 50

@@ -3,19 +3,15 @@ import csv
 import codecs
 import threading
 
-IDX_RATING = 0
-IDX_TITLE = 1
-IDX_CONTENT = 2
-IDX_AUTHOR_ID = 3
-IDX_ARTICLE_ID = 5
-IDX_THREAD_ID = 6
-IDX_TEXT_TYPE = 9
-IDX_TOKENS = 10
 
 
 def load_csv(path):
     with open(path, "rb") as f:
         return [line for line in csv.reader(f)]
+
+def save_csv(data, path):
+    with open(path, "wb") as f:
+        csv.writer(f).writerows(data)
 
 
 def load_csv_euc_kr(path):
@@ -56,17 +52,6 @@ def contain_any(text, iterable):
             return keyword
     return ""
 
-
-def parse_token(articles):
-    result = []
-    for i,article in enumerate(articles):
-        try:
-            tokens = article[IDX_TOKENS].split('/')
-            n_article = article[0:IDX_TOKENS] + [tokens]
-            result.append(n_article)
-        except Exception as e:
-            print(i,(e))
-    return result
 
 
 class CaseCounter:

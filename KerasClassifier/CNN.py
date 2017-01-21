@@ -1,26 +1,20 @@
 # -*- coding: utf-8 -*-
-import os
 
-from keras.utils import np_utils
 from keras.models import Sequential
-from keras.layers import Dense
 from keras.layers import Convolution1D, Convolution2D, MaxPooling1D, MaxPooling2D, Embedding, Reshape, Lambda
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, merge
 from keras.models import Model
 from keras.optimizers import SGD
 from keras.optimizers import Adadelta
-from sklearn.preprocessing import LabelEncoder
-import cPickle
-import numpy
-import os
 import random
-from KoreanNLP import *
 
+from KoreanNLP import *
+from SA_Label import *
 from clover_lib import *
 from CNN_common import *
 
-seed = 7
+seed = 8
 numpy.random.seed(seed)
 
 len_sentence = 80
@@ -114,46 +108,6 @@ class EMDataSet:
         self.len_embedding = len_embedding
 
 
-def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension):
-    IDX_R_THREAD = 1
-    IDX_R_ARTICLE = 2
-    IDX_R_KEYWORD= 3
-    IDX_R_LABEL = 4
-    print("Loading Data...")
-    # load label table
-    raw_neu = codecs.open(neu_path, "r",encoding="euc-kr", errors="replace").readlines()
-    raw_pos = codecs.open(pos_path, "r",encoding="euc-kr", errors="replace").readlines()
-    raw_neg = codecs.open(neg_path, "r",encoding="euc-kr", errors="replace").readlines()
-    raw_data = raw_neu +raw_pos+raw_neg
-    print("  Corpus size : neutral={} positive={} negative={}...".format(len(raw_neu),len(raw_pos),len(raw_neg)) )
-    print("  Loading articles...")
-    # load article table
-    print("  parsing tokens...")
-    tokened_data = tokenize(raw_data)
-
-    voca = set(flatten(tokened_data))
-    print(voca)
-    print("-----------")
-
-    w2v = load_vec(w2v_path, voca, False)
-    print("  Loaded w2v len = {}".format(len(w2v)) )
-    word2idx, idx2vect = build_index(voca, w2v, dimension)
-
-    # Convert text into index
-    vectors = []
-    for tokens in tokened_data:
-        vector = list(map(lambda x: word2idx[x], tokens))
-        vector = vector[:len_sentence]
-        while len(vector) < len_sentence:
-            vector.append(0)
-        vectors.append(numpy.array(vector, dtype='float32'))
-
-    dataset_x = numpy.array(vectors)
-    dataset_y = len(raw_neu) * [0] + len(raw_pos) * [1] + len(raw_neg) * [2]
-
-    return DataSet(dataset_x, dataset_y, idx2vect, dimension)
-
-
 def load_data_get_word2idx(label_path, path_article, w2v_path, dimension):
     IDX_R_THREAD = 1
     IDX_R_ARTICLE = 2
@@ -211,20 +165,64 @@ def get_article_dic(articles):
 def all_voca(articles):
     def getcontent(article):
         return article[IDX_TITLE] + ". " + article[IDX_CONTENT]
-    #texts = [getcontent(article) for article in articles]
-    #result =  set(flatten(tokenize(texts)))
-    #save_list(list(result), "voca.txt")
-    result_u = load_list("voca.txt")
-    result = [str(e.encode("utf-8")) for e in result_u]
+
+    load_pickle = True
+    if load_pickle:
+        result_u = load_list("voca.txt")
+        result = [str(e.encode("utf-8")) for e in result_u]
+    else:
+        texts = [getcontent(article) for article in articles]
+        result =  set(flatten(tokenize_list(texts)))
+        save_list(list(result), "voca.txt")
+
     return result
 
 
+def load_data_sa(label_path, path_article, w2v_path, len_embedding):
+    print("Loading Data...")
+    # load label table
+    labels = load_label(label_path)
+    articles = load_csv(path_article)
+    voca = all_voca(articles)
 
+    w2v = load_vec(w2v_path, voca, False)
+    print("  Loaded w2v len = {}".format(len(w2v)) )
+    word2idx, idx2vect = build_index(voca, w2v, len_embedding)
+    def convert2index(tokens):
+        result = []
+        for token in tokens[:len_sentence]:
+            try:
+                result.append(word2idx[token])
+            except KeyError as e:
+                print "key not found {} (type={})".format(token, type(token))
+                result.append(0)
 
-IDX_R_THREAD = 1
-IDX_R_ARTICLE = 2
-IDX_R_KEYWORD = 3
-IDX_R_LABEL = 4
+        while len(result) < len_sentence:
+            result.append(0)
+        return result
+
+    article_dic = get_article_dic(articles)
+
+    def extract_x(label):
+        article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
+        content = get_content(article)
+        tokens = tokenize(content)
+        return convert2index(tokens)
+
+    def is_short(label):
+        article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
+        content = get_content(article)
+        tokens = tokenize(content)
+        return len(tokens) < 80
+
+    print "Total labels : " + str(len(labels))
+    labels = filter(is_short, labels)
+    print "After filtering long labels: " + str(len(labels))
+    data_set_x = numpy.array([extract_x(label) for label in labels])
+    data_set_y = [label2hotv(label) for label in labels]
+
+    return DataSet(data_set_x, data_set_y, idx2vect, len_embedding)
+
 def load_dats_split_sa(label_path, path_article, w2v_path, len_embedding):
     print("Loading Data...")
     # load label table
@@ -250,20 +248,16 @@ def load_dats_split_sa(label_path, path_article, w2v_path, len_embedding):
         return result
 
     article_dic = get_article_dic(articles)
-    splitter = SentenceSplitter()
 
     def extract_x(label):
         article = article_dic[(label[IDX_R_ARTICLE], label[IDX_R_THREAD])]
-        if len(article[IDX_TITLE]) > 0 :
-            content = article[IDX_TITLE] + ". " + article[IDX_CONTENT]
-        else:
-            content = article[IDX_CONTENT]
+        content = get_content(article)
         sentences = split_sentence(content)
 
         def contain_keyword(str):
             return label[IDX_R_KEYWORD] in str
         focus_sentences = list(filter(contain_keyword, sentences))
-        tokens = flatten(tokenize(focus_sentences))
+        tokens = flatten(tokenize_list(focus_sentences))
         return convert2index(tokens)
 
     print "Total labels : " + str(len(labels))
@@ -271,24 +265,6 @@ def load_dats_split_sa(label_path, path_article, w2v_path, len_embedding):
     data_set_y = [label2hotv(label) for label in labels]
 
     return DataSet(data_set_x, data_set_y, idx2vect, len_embedding)
-
-def load_label(label_path):
-    labels = load_csv(label_path)
-    labels = [label for label in labels if
-              label[IDX_R_LABEL] == '1' or label[IDX_R_LABEL] == '3' or label[IDX_R_LABEL] == '2']
-    labels_pos = [label for label in labels if label[IDX_R_LABEL] == '1']
-    labels_neu = [label for label in labels if label[IDX_R_LABEL] == '2']
-    labels_neg = [label for label in labels if label[IDX_R_LABEL] == '3']
-
-    n_pos =  len([label for label in labels if label[IDX_R_LABEL] == '1'])
-    n_neu =  len([label for label in labels if label[IDX_R_LABEL] == '2'])
-    n_neg = len([label for label in labels if label[IDX_R_LABEL] == '3'])
-    print("  Corpus size : positive={} negative={} neutral={}...".format(n_pos, n_neg, n_neu) )
-
-    labels = labels_pos + labels_neu + labels_neg
-    random.shuffle(labels)
-    return labels
-
 
 def load_data_label_old(label_path, path_article, w2v_path, dimension):
 
@@ -395,7 +371,7 @@ def load_data_gt(pos_path, neg_path, w2v_path, dimension):
     raw_pos = codecs.open(pos_path, "r", "cp949").readlines()
     raw_neg = codecs.open(neg_path, "r", "cp949").readlines()
     raw_data = raw_pos+raw_neg
-    token_data = tokenize(raw_data)
+    token_data = tokenize_list(raw_data)
     print("  Corpus size : positive={} negative={} ".format(len(raw_pos), len(raw_neg)))
 
     for token in token_data[0]:
@@ -458,7 +434,7 @@ entity_embed_length = 50
 
 
 def get_simple_model(len_embedding, data, filter_sizes):
-    dropout_prob = (0.3, 0.3)
+    dropout_prob = (0.1, 0.3)
     num_filters = 200
     hidden_dims = 100
     embedding_dim = len_embedding
@@ -488,7 +464,7 @@ def get_simple_model(len_embedding, data, filter_sizes):
     sent_v = Dense(hidden_dims)(sent_v)
     sent_v = Dropout(dropout_prob[1])(sent_v)
     sent_v = Activation('relu')(sent_v)
-    sent_loss = Dense(3, activation='Sigmoid', name='sent_level_output')(sent_v)
+    sent_loss = Dense(3, activation='softmax', name='sent_level_output')(sent_v)
 
     adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08)
 
@@ -716,26 +692,54 @@ def run_agreement():
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
 
-def run_split_sa():
-    len_embedding = 50
 
-    load_pickle = True
+def run_sa():
+    len_embedding = 100
+
+    load_pickle = False
     if load_pickle:
-        data = pickle.load(open("sa_data","rb"))
+        data = pickle.load(open("sa_data_0","rb"))
         print("Loading data from pickle")
     else:
-        path_lable = "..\\input\\corpus_samba.csv"
-        w2v_path = "..\\input\\korean_word2vec_wv_50.txt"
+        #path_lable = "..\\input\\corpus_samba.csv"
+        path_lable = "..\\input\\unanimous_label.csv"
+        w2v_path = "..\\input\\korean_word2vec_wv_100.txt"
+        path_article = "..\\input\\bobae_car_tkn_twitter.csv"
+        data = load_data_sa(path_lable, path_article, w2v_path, len_embedding)
+        pickle.dump(data, open("sa_data_0", "wb"))
+
+    model = get_simple_model(len_embedding, data, [3,4])
+
+    print("Training Model...")
+    model.fit(data.train_x, data.train_y,
+              batch_size=100,
+              nb_epoch=100,
+              validation_data=(data.test_x, data.test_y),
+              shuffle=True)
+
+    return model
+
+def run_split_sa():
+    len_embedding = 100
+
+    load_pickle = False
+    if load_pickle:
+        data = pickle.load(open("sa_data_1","rb"))
+        print("Loading data from pickle")
+    else:
+        #path_lable = "..\\input\\corpus_samba.csv"
+        path_lable = "..\\input\\unanimous_label.csv"
+        w2v_path = "..\\input\\korean_word2vec_wv_100.txt"
         path_article = "..\\input\\bobae_car_tkn_twitter.csv"
         data = load_dats_split_sa(path_lable, path_article, w2v_path, len_embedding)
         pickle.dump(data, open("sa_data", "wb"))
 
 
-    model = get_simple_model(len_embedding, data, [3, 4])
+    model = get_simple_model(len_embedding, data, [3,4])
 
     print("Training Model...")
     model.fit(data.train_x, data.train_y,
-              batch_size=50,
+              batch_size=100,
               nb_epoch=100,
               validation_data=(data.test_x, data.test_y),
               shuffle=True)
@@ -760,4 +764,5 @@ if __name__ == "__main__":
     #model.save("model")
     #run_agreement()
     #run_carsurve()
-    run_split_sa()
+    run_sa()
+    #run_split_sa()

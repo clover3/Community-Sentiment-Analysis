@@ -1,10 +1,19 @@
 
 import numpy
 
-
-def tokenize(list_str):
+def tokenize(sentence):
     from konlpy.tag import Twitter
-    from konlpy.tag import Hannanum
+    lib = Twitter()
+
+    if type(sentence) == type("str"):
+        sentence = unicode(sentence,'utf-8')
+
+    poses = lib.pos(sentence)
+    tokens = map(lambda x:x[0].encode('utf8'), poses)
+    return tokens
+
+def tokenize_list(list_str):
+    from konlpy.tag import Twitter
     lib = Twitter()
 
     arr = []

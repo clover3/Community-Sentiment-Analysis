@@ -16,6 +16,8 @@ def split_sentence(str):
 def split_sentence_u(str):
     # this cannot distinguis dots in the middle of sentence.
     imoticon_chars = [u'ㅎ', u'ㅋ', u'ㄷ', u'ㅠ', u'ㅜ', u'^']
+    newline_chars = [u'\n', u'\r']
+    sentence_ending_char = [u'요', u'죠', u'듯', u'음', u'다', u'까', u' ']
 
     def is_dot_for_numeric(str, location):
         assert (location != 0 and location < len(str) - 1)
@@ -56,7 +58,7 @@ def split_sentence_u(str):
     def is_enumerating_dot(str, location):
         pre_char = str[location - 1]
         post_char = str[location + 1]
-        if pre_char== '.' or post_char == '.' :
+        if pre_char== u'.' or post_char == u'.' :
             return False
 
         st = max(0, location - 4)
@@ -68,12 +70,12 @@ def split_sentence_u(str):
         st = location + 2
         ed = min(len(str), location + 5)
         for i in range(location + 1, ed):
-            if str[i] == '.':
+            if str[i] == u'.':
                 return True
         return False
 
     def is_ending_dot(str, location):
-        if str[location] != '.':
+        if str[location] != u'.':
             return False
         if location == 0:
             return False
@@ -85,6 +87,23 @@ def split_sentence_u(str):
             return False
         return True
 
+    def is_ending_newline(str, location):
+        if location == 0 :
+            return False
+
+        if str[location] in newline_chars:
+            pre_char = str[location-1]
+            if pre_char in sentence_ending_char:
+                return True
+
+        return False
+
+    def ending_newline_end_location(str, location):
+        assert(is_ending_newline(str,location))
+        for i in range(location + 1, len(str)):
+            if str[i] not in newline_chars:
+                return i
+        return len(str)
 
 
     delimiter_list = []
@@ -99,7 +118,7 @@ def split_sentence_u(str):
         if i <= last_delimiter() :
             continue    # Already tested, skip and go on
 
-        if char in ['!', '?', ';']:
+        if char in [u'!', u'?', u';']:
             delimiter_list.append(i)
 
         elif is_ending_dot(str, i):
@@ -107,6 +126,12 @@ def split_sentence_u(str):
 
         elif is_ending_emoticon(str, i):
             end = ending_emoticon_end_location(str,i)
+            for itr in range(i,end):
+                delimiter_list.append(itr)
+
+
+        elif is_ending_newline(str, i):
+            end = ending_newline_end_location(str,i)
             for itr in range(i,end):
                 delimiter_list.append(itr)
 
@@ -129,6 +154,7 @@ def split_sentence_u(str):
 
     return sentences_found
 
+
 def test_split_sentence():
     print("Rnning Test for split_sentence...")
 
@@ -147,7 +173,6 @@ def test_split_sentence():
         print("testing:"+ text)
         for s in split_sentence(text):
             print("> " +s)
-
 
 
 def is_spam(text):
@@ -180,7 +205,7 @@ def extract_related(text, keyword):
 
     focus_sentences = list(filter(contain_keyword, sentences))
 
-    return focus_sentences.join(" ")
+    return "".join(focus_sentences)
 
 
 if __name__ == "__main__":
