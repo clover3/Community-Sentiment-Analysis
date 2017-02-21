@@ -568,7 +568,7 @@ def agreement_corpus():
     data = load_csv_utf("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
     save_csv_utf2(data, "tmp")
     data_token_parsed = parse_token(data)
-    data_no_newline = remove_newline(data_token_parsed)
+    data_no_newline = remove_newline_array(data_token_parsed)
     print data_no_newline[0]
     validate(data_no_newline)
     related_dic = resolve_target_and_eval(data_no_newline)
