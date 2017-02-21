@@ -123,22 +123,22 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <None Include="2run.bat">
-      <Filter>bat</Filter>
-    </None>
-    <None Include="4run.bat">
-      <Filter>bat</Filter>
-    </None>
     <None Include="2run -.bat">
-      <Filter>bat</Filter>
-    </None>
-    <None Include="1run.bat">
       <Filter>bat</Filter>
     </None>
     <None Include="3_EvalDependecny.bat">
       <Filter>bat</Filter>
     </None>
     <None Include="5_RecoverEllipsis.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="1_ClusterEmbedding.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="2_FrequentPattern.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="4_OmissionRecover.old.bat">
       <Filter>bat</Filter>
     </None>
   </ItemGroup>

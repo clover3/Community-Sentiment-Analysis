@@ -176,11 +176,11 @@
     <Text Include="Document.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="1run.bat" />
+    <None Include="1_ClusterEmbedding.bat" />
     <None Include="2run -.bat" />
-    <None Include="2run.bat" />
+    <None Include="2_FrequentPattern.bat" />
     <None Include="3_EvalDependecny.bat" />
-    <None Include="4run.bat" />
+    <None Include="4_OmissionRecover.old.bat" />
     <None Include="5_RecoverEllipsis.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

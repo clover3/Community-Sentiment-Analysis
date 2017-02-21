@@ -47,7 +47,7 @@ public:
 	bool has_neighbor(Word_ID source, Doc& doc){ return !no_neighbor(source, doc); }
 	set<int> word_context(Word_ID source, Doc& doc, Doc& context)
 	{
-		if (neighbor(source, doc).size() > 2)
+		if (neighbor(source, doc).size() > 1)
 			return set<int>();
 		return neighbor(source, context);
 	}

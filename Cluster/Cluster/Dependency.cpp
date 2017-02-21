@@ -157,7 +157,7 @@ bool is_dependent(const int item, const ItemSet& pattern, const Docs& docs)
 
 	//if (lift > 3 )//  probability - probability_without > 0.2)
 	//if (probability / probability_without > 2)
-	if (lift > 2 && probability > 0.2)
+	if (lift > 1.4 && probability > 0.2)
 	{
 		//cout << lift << " " << p_ir << " " << p_i << " " << p_r << endl;
 		return true;
@@ -574,6 +574,64 @@ void check_sentence(Doc& doc)
 	}
 }
 
+set<string> load_car_keywords()
+{
+	string path = common_input + "car_keyword_euc.txt";
+
+	ifstream infile(path);
+	check_file(infile, path);
+
+	set<string> s;
+	string line;
+	while (std::getline(infile, line))
+	{
+		s.insert(trim(line));
+	}
+	return s;
+}
+
+vector<Dependency> filter_by_car(vector<Dependency> &dependsList, Idx2Word& idx2word, MCluster& mcluster)
+{
+	map<string, int> word2idx = reverse_idx2word(idx2word);
+
+	set<string> car_keywords = load_car_keywords();
+
+	cout << car_keywords.size() << " car keywords.. " << endl;
+	Set2<int> car_keywords_i;
+	for (string keyword : car_keywords)
+	{	
+		if (word2idx.find(keyword) != word2idx.end())
+			car_keywords_i.insert(word2idx[keyword]);
+	}
+	cout << car_keywords_i.size() << " matched car keywords.. " << endl;
+
+	function<bool(Dependency)> car_related = [&car_keywords_i, &mcluster](Dependency d){
+		int word_a = d.target;
+		int word_b = d.dependents[0];
+		if (car_keywords_i.has(word_a))
+			return true;
+		for (int word : mcluster.get_words(word_a))
+		{
+			if (car_keywords_i.has(word))
+				return true;
+		}
+
+		if (car_keywords_i.has(word_b))
+			return true;
+		for (int word : mcluster.get_words(word_b))
+		{
+			if (car_keywords_i.has(word))
+				return true;
+		}
+		return false;
+	};
+
+	cout << "Filter by car " << dependsList.size() << endl;
+	vector<Dependency> filtered = filter(dependsList, car_related);
+	cout << " -> " << filtered.size() << endl;
+	return filtered;
+}
+
 void resolve_omission_indexed()
 {
 	cout << "resolve_omission_indexed ENTRY" << endl;
@@ -591,7 +649,8 @@ void resolve_omission_indexed()
 	map<int, string> idx2word = load_idx2word(common_input + "idx2word");
 	RL.init(&idx2word);
 
-	vector<Dependency> dependsList = load_dependency(data_path + "dependency.index");
+	vector<Dependency> raw_dependsList = load_dependency(data_path + "dependency.index");
+	vector<Dependency> dependsList = filter_by_car(raw_dependsList, idx2word, mcluster);
 	cout << "loaded dependsList" << endl;
 	DependencyIndex index(dependsList, &mcluster);
 	int line_count = 0;
@@ -628,3 +687,4 @@ void resolve_omission_indexed()
 	string recovered_path = common_input + "recovered.index";
 	save_docs(output_docs, recovered_path);
 }
+
