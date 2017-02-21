@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
 libraryDependencies += "com.twitter.penguin" % "korean-text" % "4.4.2"
 libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.4"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+libraryDependencies += "org.scala-lang" % "scala-library" % "2.11.7"
 
 
 version := "1.0"
