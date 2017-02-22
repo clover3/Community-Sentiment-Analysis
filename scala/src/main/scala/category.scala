@@ -1,37 +1,15 @@
 /**
   * Created by user on 2016-12-28.
   */
+package sfc
+
 import java.io.File
 
+import sfc.tag._
 import com.github.tototoshi.csv._
 
-object category{
-  val TagHumanLike : String = "person 0,individual 0,someone 0,somebody 0,mortal 0,human 0,soul 0 어떤__사람|156508_인간|"
-  val TagVehicle : String = "vehicle 0 운송_수단/"
+package object category{
 
-
-  type WordID = Int
-  type SynsetIdx = Int
-  type SynsetOffset = Int
-  type StdIdx = Int
-
-  class Tag(id : StdIdx, parentID:List[SynsetOffset], val name:String){
-    def canEqual(a: Any) = a.isInstanceOf[Tag]
-    override def equals(that: Any): Boolean =
-      that match {
-        case that: Tag => that.canEqual(this) && this.hashCode == that.hashCode
-        case _ => false
-      }
-
-    override def hashCode:Int = {
-      val prime = 31
-      var result = 1
-      result = prime * result + id;
-      result = prime * result + (if (name == null) 0 else name.hashCode)
-      return result
-    }
-
-  }
   type Category = List[Tag]
   type TaggedTokens = Seq[(String, Option[Category])]
 
@@ -47,16 +25,6 @@ object category{
 
   def allTags(categorys : Iterable[Category]) : Set[Tag] = {
     categorys.flatten.toSet
-  }
-
-  class TagFinder(tags : Set[Tag]) {
-    val nameIndex = (tags map ( x => (x.name, x))).toMap
-    def findByName(tagName : String) : Tag = nameIndex(tagName)
-    def findByNameEx(tagName : String) : Tag = {
-      val matches = tags filter (x => x.name.contains(tagName))
-      matches foreach (x => println(x.name))
-      matches.head
-    }
   }
 
   // StdDic : Standard Dictionary : Human words

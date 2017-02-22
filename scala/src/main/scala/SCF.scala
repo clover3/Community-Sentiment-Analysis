@@ -1,8 +1,9 @@
-import category._
-import com.twitter.penguin.korean.TwitterKoreanProcessor
-import com.twitter.penguin.korean.tokenizer.KoreanTokenizer.KoreanToken
+package sfc
+import sfc.category._
+import sfc.tag._
+import stringHelper._
 
-object scf {
+package object sfc2 {
 
   class Argument(restriction: Tag, role: String) {
     def applicable(optCategory: Option[Category]): Boolean = optCategory match
@@ -15,20 +16,20 @@ object scf {
     }
   }
 
-  class SCF(val head: String, val arguments: List[Argument]) {
+  class SubcategorizationFrame(val head: String, val arguments: List[Argument]) {
 
   }
 
   // TODO make object
   // Rule 1 : 보다 -
 
-  class SCFDictionary(scfs: Iterable[SCF]) {
+  class SCFDictionary(scfs: Iterable[SubcategorizationFrame]) {
     val headsSet = (scfs map (_.head)).toSet
     val headIndexed = (scfs map (x => (x.head, x))).toMap
 
     def isKnownHead(word: String): Boolean = headsSet.contains(word)
 
-    def get(heads: Iterable[String]): Iterable[SCF] = heads map headIndexed
+    def get(heads: Iterable[String]): Iterable[SubcategorizationFrame] = heads map headIndexed
   }
   def isComplete(categoryInfo: List[(String, Category)])
                 (dic: SCFDictionary)
@@ -40,13 +41,13 @@ object scf {
     val knownHeads: Seq[String] = tokens filter dic.isKnownHead
 
     // 3. match SCF pattern
-    val patterns: Iterable[SCF] = dic.get(knownHeads)
+    val patterns: Iterable[SubcategorizationFrame] = dic.get(knownHeads)
 
     // 3-1. Tag category
     def tag = tagger(categoryInfo)(_)
     val taggedTokens: TaggedTokens = tokens map (x => (x, tag(x)))
 
-    def satisfy(tokens: TaggedTokens)(scf: SCF): Boolean = {
+    def satisfy(tokens: TaggedTokens)(scf: SubcategorizationFrame): Boolean = {
       // FIXME current we match argument in greedy way
       // 1. tokens should contain head
       def matchHead(token: (String, Option[Category])): Boolean = token._1 == scf.head

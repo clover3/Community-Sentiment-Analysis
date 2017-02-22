@@ -4,7 +4,7 @@ import com.twitter.penguin.korean.tokenizer.KoreanTokenizer.KoreanToken
 /**
   * Created by user on 2017-02-21.
   */
-object stringHelper {
+package object stringHelper {
   def tokenize(text : String) : Seq[String] =
   {
     val normalized: CharSequence = TwitterKoreanProcessor.normalize(text)
