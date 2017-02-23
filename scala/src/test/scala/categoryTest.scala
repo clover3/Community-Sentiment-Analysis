@@ -109,5 +109,8 @@ class CategorySuite extends FunSuite {
     testSFC("저는 예쁜데 왜 그러지 ㅠ")
     testSFC("군인은 꽃을 예쁘다고 생각합니다.")
 
+    val ceylon = new Ceylon(categorys, scfDict)
+
+    ceylon.showRecovery("직원은 예쁘다고 하죠.", "소나타랑 트럭중에 어느게 예뻐요?")
   }
 }

@@ -176,5 +176,26 @@ package object sfc2 {
     patterns forall (satisfy(taggedTokens))
   }
 
+  class Ceylon(categoryInfo: List[(String, Category)], dic: SCFDictionary)
+  {
+    def recover(target: String, context: String): List[String] = {
+      val remainArg : Iterable[Argument] = allUnmatchedArg(categoryInfo)(dic)(target)
+      val tokens: Seq[String] = stringHelper.tokenize(context)
+      def tag = tagger(categoryInfo)(_)
+      val taggedTokens: TaggedTokens = tokens map (x => (x, tag(x)))
 
+      def matcher(token : (String, Option[Category]), arg: Argument ) : Boolean = arg.applicable(token._2)
+      val (mL, tokenL, argL) = listMatching(taggedTokens.toList, remainArg.toList, matcher)
+      mL map (_._1._1)
+    }
+
+    def showRecovery(text: String, textContext: String) = {
+      val recovered = recover(text, textContext)
+      println(s"Context: $textContext" )
+      println(s"Text: $text" )
+      print("Omitted : ")
+      recovered foreach print
+      println("")
+    }
+  }
 }
