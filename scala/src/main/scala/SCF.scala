@@ -6,7 +6,7 @@ import stringHelper._
 
 package object sfc2 {
 
-  class Argument(restriction: Tag, role: String) {
+  class Argument(restriction: Tag, val role: String) {
     def applicable(optCategory: Option[Category]): Boolean = optCategory match
     {
       case Some(category) => category exists (_ == restriction)
@@ -19,9 +19,6 @@ package object sfc2 {
   }
 
   class SubcategorizationFrame(val head: String, val arguments: List[Argument]) {  }
-
-  // TODO make object
-  // Rule 1 : 보다 -
 
   class SCFDictionary(scfs: Iterable[SubcategorizationFrame]) {
     val headsSet = (scfs map (_.head)).toSet
@@ -45,9 +42,9 @@ package object sfc2 {
     ))
   }
 
+  // Return : (Matched Pair List, Remaining A, Remaining B)
   def listMatching[A,B](aList : List[A], bList : List[B] , matcher: (A,B) => Boolean) :
     ( List[(A,B)], List[A], List[B]) =
-    // Matched Pair List, Remaining A, Remaining B
   {
       def getFirstMatch(aList: Iterable[A], b : B) : Option[A] = aList find (matcher(_, b))
       def filterFrom(aList : List[A], optA : Option[A]) : List[A] = optA match {
@@ -70,62 +67,44 @@ package object sfc2 {
       }
     }
 
+  // This function is unused
   def unmatchedArg(tokens: TaggedTokens)(scf: SubcategorizationFrame): List[Argument] = {
-    def find(tokens: TaggedTokens, args: List[Argument]): List[Argument] = {
-      args match {
-        case Nil => Nil
-        case headArg :: tailArg => {
-          val categories: Seq[Option[Category]] = tokens map (x => x._2)
-          lazy val fMatch: Boolean = categories exists headArg.applicable
-          val head : Option[Argument] = if (fMatch) None else Some(headArg)
-
-          // match head with any matching token, then return remaining
-          def getRemain(tokens: TaggedTokens): TaggedTokens = tokens match {
-            case Nil => Nil
-            case tokenHead :: tokenTail => {
-              if (headArg.applicable(tokenHead._2))
-                tokenTail
-              else
-                tokenHead +: getRemain(tokenTail)
-            }
-          }
-
-          val remainingTokens = if(fMatch) getRemain(tokens)
-          else tokens
-
-          val tail : List[Argument] = find(remainingTokens, tailArg)
-          head.toList ++ tail
-        }
-      }
-    }
-    find(tokens, scf.arguments)
     def matcher(token : (String, Option[Category]), arg: Argument ) : Boolean = arg.applicable(token._2)
     val (mL, aL, bL) = listMatching(tokens.toList, scf.arguments, matcher)
     bL
   }
 
+
   def allUnmatchedArg(categoryInfo: List[(String, Category)])
                 (dic: SCFDictionary)
                 (sentence: String) : Iterable[Argument] = {
-    // 1. tokenize sentence
-    val tokens: Seq[String] = stringHelper.tokenize(sentence)
-
-    // 2. find known head
-    val knownHeads: Seq[String] = tokens filter dic.isKnownHead
-
-    // 3. match SCF pattern
-    val patterns: Iterable[SubcategorizationFrame] = dic.get(knownHeads)
-
-    // 3-1. Tag category
-    def tag = tagger(categoryInfo)(_)
-    val taggedTokens: TaggedTokens = tokens map (x => (x, tag(x)))
-
-    patterns flatMap (unmatchedArg(taggedTokens))
+    val SCFMatchResults = applyPossibleSCF(categoryInfo)(dic)(sentence)
+    SCFMatchResults map (_._4) flatten
   }
 
+  type SCFMatch = (SubcategorizationFrame, List[(TaggedToken, Argument)], List[TaggedToken], List[Argument])
+  implicit class SCFMatchCompanionOps(val s: SCFMatch) extends AnyVal {
+    def print ={
+      def matchPrinter(x:(TaggedToken, Argument)) = {
+        val str : String = x._1._1
+        val arg : String = x._2.role
+        println(s"$str - $arg")
+      }
+
+      s match { case(scf, mL, tokenL, argL) => {
+          val head = scf.head
+          println(s"[SCF] head = $head")
+          mL foreach matchPrinter
+          argL foreach (arg => Predef.println("??? - " + arg.role))
+        }
+      }
+    }
+  }
+
+  // Given sentence, tokenize the sentence, tag the sentence and match it with possible SCF
   def applyPossibleSCF(categoryInfo: List[(String, Category)])
                       (dic: SCFDictionary)
-                      (sentence: String) : Iterable[Argument] = {
+                      (sentence: String) : Iterable[SCFMatch] = {
     val tokens: Seq[String] = stringHelper.tokenize(sentence)
 
     // 2. find known head
@@ -138,8 +117,8 @@ package object sfc2 {
     def tag = tagger(categoryInfo)(_)
     val taggedTokens: TaggedTokens = tokens map (x => (x, tag(x)))
     def matcher(token : (String, Option[Category]), arg: Argument ) : Boolean = arg.applicable(token._2)
-    def f = listMatching(taggedTokens.toList)(_)(matcher)
-    patterns map f
+    def apply(x:SubcategorizationFrame) = listMatching(taggedTokens.toList, x.arguments, matcher)
+    patterns map ( scf => ( apply(scf) match {case(mL,aL,bL) => (scf, mL, aL, bL ) } ))
   }
 
   def isComplete(categoryInfo: List[(String, Category)])

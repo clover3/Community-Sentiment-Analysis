@@ -11,7 +11,8 @@ import com.github.tototoshi.csv._
 package object category{
 
   type Category = List[Tag]
-  type TaggedTokens = Seq[(String, Option[Category])]
+  type TaggedToken = (String, Option[Category])
+  type TaggedTokens = Seq[TaggedToken]
 
   def printCategory(c : Category) = {
     c foreach ( x => print(x.name + " or ") )
