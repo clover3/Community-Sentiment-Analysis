@@ -1,14 +1,21 @@
 
-import java.nio.charset.StandardCharsets
 
 import org.scalatest.FunSuite
-import category._
-import com.twitter.penguin.korean.TwitterKoreanProcessor
-import scf._
+import sfc._
+import sfc.category._
+import sfc.tag._
+import sfc.list._
+import sfc.sfc2._
 import stringHelper._
 
-
 class CategorySuite extends FunSuite {
+
+  test("Tokenize Test"){
+    val sentence1 = "결국에 현기 사는 이유는 뭘 제대로 알아 보고 산게 아니라 많이 팔리니까 사는거라는 소린가요?? "
+    val sentence2 = "저는 예쁜데 왜 그러지 ㅠ"
+    val res1 = tokenize(sentence2)
+    res1 foreach (x=> print(x+"."))
+  }
 
   test("check category load"){
     val categories = loadCategory("data\\StdDic.txt", "data\\Synset.txt", "data\\Tran.txt")
@@ -72,21 +79,35 @@ class CategorySuite extends FunSuite {
   {
     val categorys : List[(String, Category)] = loadCategory("data\\StdDic.txt", "data\\Synset.txt", "data\\Tran.txt")
     val tags = allTags(categorys map (_._2))
-    val tagFinder = new TagFinder(tags)
+    val scfDict : SCFDictionary = scfDictBest(tags)
+    def checker(text : String) : Boolean = {
+      val result = isComplete(categorys)(scfDict)(text)
+      if(!result)
+      {
+        println(s"$text is not complete sentence")
+        val remain : Iterable[Argument] = allUnmatchedArg(categorys)(scfDict)(text)
+        println("Remaining arguments are :")
+        remain foreach {
+          _.print
+        }
+      }
 
-    val personTag : Tag = tagFinder.findByName(TagHumanLike)
-    val actor : Argument = new Argument(personTag, "Actor")
-
-    val vehicleTag : Tag = tagFinder.findByName(TagVehicle)
-    val vehicle : Argument = new Argument(vehicleTag, "Target")
-    val ride : SCF = new SCF("타다", List(actor, vehicle))
-
-    val scfDict : SCFDictionary = new SCFDictionary(List(ride))
-    def checker :(String)=>Boolean = isComplete(categorys)(scfDict)(_)
+      result
+    }
     assert(checker("아버지는 오토바이를 탔다") === true)
     assert(checker("집이 탔다") === false)
     assert(checker("") === true)
     assert(checker("님이 한번 중형차 타보시면 압니다.") === true)
-  }
+    assert(checker("저는 예쁜데 왜 그러지 ㅠ")=== false)
 
+
+    def testSFC(sentence: String) = {
+      val matches =  applyPossibleSCF(categorys)(scfDict)(sentence)
+      matches foreach (_.print)
+    }
+
+    testSFC("저는 예쁜데 왜 그러지 ㅠ")
+    testSFC("군인은 꽃을 예쁘다고 생각합니다.")
+
+  }
 }
