@@ -28,13 +28,14 @@ class AgreeDataSet:
         self.idx2vect = idx2vect
         self.len_embedding = len_embedding
 
+encoding = "utf-8"
 
 def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sentence):
     print("Loading Data...")
     # load label table
-    raw_neu = codecs.open(neu_path, "r",encoding="euc-kr", errors="replace").readlines()
-    raw_pos = codecs.open(pos_path, "r",encoding="euc-kr", errors="replace").readlines()
-    raw_neg = codecs.open(neg_path, "r",encoding="euc-kr", errors="replace").readlines()
+    raw_neu = codecs.open(neu_path, "r",encoding=encoding, errors="replace").readlines()
+    raw_pos = codecs.open(pos_path, "r",encoding=encoding, errors="replace").readlines()
+    raw_neg = codecs.open(neg_path, "r",encoding=encoding, errors="replace").readlines()
     raw_data = raw_neu +raw_pos+raw_neg
     print("  Corpus size : neutral={} positive={} negative={}...".format(len(raw_neu),len(raw_pos),len(raw_neg)) )
     print("  Loading articles...")
@@ -43,7 +44,6 @@ def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sente
     tokened_data = tokenize_list(raw_data)
 
     voca = set(flatten(tokened_data))
-    print(voca)
     print("-----------")
 
     w2v = load_vec(w2v_path, voca, False)
@@ -60,7 +60,7 @@ def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sente
         vectors.append(numpy.array(vector, dtype='float32'))
 
     dataset_x = numpy.array(vectors)
-    dataset_y = len(raw_neu) * [[0,0]]+ len(raw_pos) * [[1,0]] + len(raw_neg) * [[0,1]]
+    dataset_y = len(raw_neu) * [[1,0,0]]+ len(raw_pos) * [[0,1,0]] + len(raw_neg) * [[0,0,1]]
 
     return AgreeDataSet(dataset_x, dataset_y, idx2vect, dimension)
 
@@ -71,6 +71,8 @@ def get_model_agree(len_sentence, len_embedding, data, filter_sizes):
     dropout_prob = (0.2, 0.2)
     n_filter = 200
     hidden_dims = 100
+    l2value = 2
+
     size_voca = len(data.idx2vect)
     sent_input = Input(shape=(len_sentence,), dtype='int32', name='sent_input')
     print(" Embedding Layer ")
@@ -96,28 +98,28 @@ def get_model_agree(len_sentence, len_embedding, data, filter_sizes):
     sent_v = Dense(hidden_dims)(sent_v)
     sent_v = Dropout(dropout_prob[1])(sent_v)
     sent_v = Activation('relu')(sent_v)
-    sent_loss = Dense(2, activation='sigmoid', name='sent_level_output')(sent_v)
+    sent_loss = Dense(3, activation='softmax', name='sent_level_output')(sent_v)
 
-    adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08)
+    adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, clipnorm=l2value)
 
     model = Model(input=sent_input, output=sent_loss)
-    model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
+    model.compile(loss='categorical_crossentropy', metrics=['accuracy', 'fmeasure'], optimizer=adadelta)
     return model
 
 
 def run_agreement():
-    len_embedding = 50
+    len_embedding = 100
     len_sentence = 80
 
-    path_prefix = "..\\input\\agree_"
+    path_prefix = "..\\input\\agree0206_"
     neu_path = path_prefix + "0.csv"
     pos_path = path_prefix + "1.csv"
     neg_path = path_prefix + "2.csv"
-    w2v_path = "..\\input\\korean_word2vec_wv_50.txt"
+    w2v_path = "..\\input\\korean_word2vec_wv_100.txt"
 
     data = load_data_agree(neu_path, pos_path, neg_path, w2v_path, len_embedding, len_sentence)
 
-    model = get_model_agree(len_sentence, len_embedding, data, [2,3,4,5])
+    model = get_model_agree(len_sentence, len_embedding, data, [2,3])
 
     print("Training Model...")
     model.fit(data.train_x, data.train_y,

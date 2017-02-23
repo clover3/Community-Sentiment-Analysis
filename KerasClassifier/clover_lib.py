@@ -102,3 +102,8 @@ class FailCounter:
 def flatten(z):
     return [y for x in z for y in x]
 
+
+def play_process_completed():
+    import playsound
+    playsound.playsound("C:\work\complete.mp3")
+
