@@ -272,24 +272,60 @@ def generate_sentence_context(label_data_path):
     end = sentences[-1][EL_IDX_SENTENCE_ID]
     cases = range(begin, end+1)
 
-    return [(get_sentence_by_id(case)[EL_IDX_CONTENT], context_for(case)) for case in cases]
+    def generate_case(case_id):
+        entity = get_sentence_by_id(case)[EL_IDX_LABEL]
+        target = get_sentence_by_id(case)[EL_IDX_CONTENT]
+        context = context_for(case)
+
+        return (entity, target, context)
+
+    return [generate_case(case) for case in cases]
 
 def save_as_files(data):
     index = 0
 
+    def num_lines(text):
+        return text.count('\n')+1
+
     def save_testcase(case, index):
         f = open("entity_test\\case{}.txt".format(index), "w")
-        (content, context) = case
-        f.write(content+"\n")
+        (entity, target, context) = case
+        f.write(entity+"\n")
+        f.write(str(num_lines(target))+"\n")
+        f.write(target+"\n")
+
         for token in context:
-            f.write(token[0] + "\n")
-            f.write(token[1] + "\n")
+            sentence = token[0]
+            f.write(str(num_lines(sentence))+ "\n")
+            f.write(sentence + "\n")
+            author = token[1]
+            ## Note that author is not printed
 
-
+    ## Entity
+    ## Target Sentence Length
+    ## Target Sentence
+    ## Number of Context Sentence
+    ## Legnth of each sentence
 
     for case in data:
         save_testcase(case, index)
         index += 1
+
+
+
+
+
+class solver:
+
+    def __init__(self, keyword_path):
+        keywordDict = dict()
+
+    def solve_n_eval(self, path):
+        ## for every file in dir(path) solve and summarize accuracy
+
+
+    def solve(self, case):
+        (entity, target, context) = case
 
 
 
