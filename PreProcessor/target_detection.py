@@ -9,6 +9,7 @@ import itertools
 import random
 import time
 import logging
+import pickle
 
 
 # 전체 데이터에 대해서 LDA를 돌린다.
@@ -526,6 +527,28 @@ def to_indexed_string(tokens, word2idx):
     return " ".join(index_tokens)
 
 
+def extract_pair_plain(data, related_dic):  # List(text), Dic((int,int) -> (int,int)) -> List(String)
+    data_dic = dict()  # Dict( (int,int) -> text )
+
+    for post in data:
+        index = get_thread_article_id(post)
+        data_dic[index] = post
+
+    def post2pair_str(post):
+        index = get_thread_article_id(post)
+        related_index = related_dic[index]
+        out_str = post[IDX_CONTENT]
+        if related_index == (0, 0):
+            None
+        else:
+            related_post = data_dic[related_index]  # text
+            post_fix = related_post[IDX_CONTENT]
+            out_str += (" - " + post_fix)
+        return remove_newline(out_str)
+
+    return [post2pair_str(post) for post in data]
+
+
 def extract_pair(data, related_dic, word2idx):  # List(text), Dic((int,int) -> (int,int)) -> List(String)
     data_dic = dict()  # Dict( (int,int) -> text )
 
@@ -610,6 +633,18 @@ def process_bobae():
     output_str_list("..\\input\\related.index", str_list)
 
 
+def generate_context_pair():
+    cursor = 0
+    size = 100000
+    data = load_csv("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+    data_token_parsed = parse_token(data)
+    validate(data_token_parsed)
+
+    related_dic = resolve_target_and_eval(data_token_parsed)
+
+    str_list = extract_pair_plain(data, related_dic)
+    output_str_list("..\\input\\related.txt", str_list)
+
 def load_recovered(path, idx2word):
     raw_list = load_list(path)
 
@@ -662,11 +697,58 @@ def load_reddit():
         print line[IDX_REDDIT_AUTHOR]
 
 
+def recommendation_ranking():
+
+    # 1. score=(추천-비추천)이 2 이상인 경우
+    # 2. score < -2 이하
+    # 3. 그외
+    cursor = 0
+    size = 100000
+    data = load_csv("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+
+    def get_score(post):
+        (up, down) = post[IDX_RATING].split(",")
+        return int(up)-int(down)
+
+    scored_data = []
+
+    for post in data:
+        try:
+            score = get_score(post)
+            scored_data.append((score, post[IDX_CONTENT]))
+        except ValueError as e:
+            print(e)
+
+    good_posts = filter(lambda x: x[0] >= 5, scored_data)
+    bad_posts = filter(lambda x: x[0] <= -3, scored_data)
+    soso_posts = filter(lambda x: (-1 < x[0] < 2), scored_data)
+
+    print("Good Posts :")
+    for post in good_posts[:20]:
+        print post[1]
+
+    print("Bad Posts :")
+    for post in bad_posts[:20]:
+        print post[1]
+
+def save_relation():
+    cursor = 0
+    size = 100000
+    data = load_csv("..\\input\\bobae_car_tkn_twitter.csv")[cursor:cursor + size]
+
+    data_token_parsed = parse_token(data)
+    validate(data_token_parsed)
+    related_dic = resolve_target_and_eval(data_token_parsed)
+    pickle.dump(related_dic, open("targetDict.p", "wb"))
+
 if __name__ == '__main__':
     freeze_support()
     # test_on_guldang()
-    load_reddit()
+    #load_reddit()
     # process_bobae()
     # apply_recovered()
+    #generate_context_pair()
+    save_relation()
+    #recommendation_ranking()
 # create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
 
