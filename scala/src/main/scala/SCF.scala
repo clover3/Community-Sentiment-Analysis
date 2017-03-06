@@ -191,11 +191,13 @@ package object sfc2 {
 
     def showRecovery(text: String, textContext: String) = {
       val recovered = recover(text, textContext)
-      println(s"Context: $textContext" )
-      println(s"Text: $text" )
-      print("Omitted : ")
-      recovered foreach print
-      println("")
+      val len = recovered.length
+      if (len > 0) {
+        println(s"Context: $textContext")
+        println(s"Text: $text")
+        val outOmit = recovered.mkString(",")
+        print(s"Omitted($len) : $outOmit")
+      }
     }
   }
 }

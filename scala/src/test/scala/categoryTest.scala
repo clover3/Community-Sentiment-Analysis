@@ -8,6 +8,8 @@ import sfc.list._
 import sfc.sfc2._
 import stringHelper._
 
+import scala.io.Source
+
 class CategorySuite extends FunSuite {
 
   test("Tokenize Test"){
@@ -112,5 +114,26 @@ class CategorySuite extends FunSuite {
     val ceylon = new Ceylon(categorys, scfDict)
 
     ceylon.showRecovery("직원은 예쁘다고 하죠.", "소나타랑 트럭중에 어느게 예뻐요?")
+  }
+
+  test("Recovery on Bobae"){
+
+    val categorys : List[(String, Category)] = loadCategory("data\\StdDic.txt", "data\\Synset.txt", "data\\Tran.txt")
+    val tags = allTags(categorys map (_._2))
+    val scfDict : SCFDictionary = scfDictBest(tags)
+    val ceylon = new Ceylon(categorys, scfDict)
+
+    val rootInput = "C:\\work\\Code\\Community-Sentiment-Analysis\\input\\"
+    val filename = "related.txt"
+    val path: String =rootInput + filename
+    for (line <- Source.fromFile(path).getLines()) {
+      val cutIdx = line.indexOf('-')
+      if(cutIdx > 0){
+        val target = line.substring(0,cutIdx)
+        val context = line.substring(cutIdx + 1)
+        println("---------------")
+        ceylon.showRecovery(target, context)
+      }
+    }
   }
 }
