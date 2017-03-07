@@ -6,6 +6,30 @@ import org.scalatest.FunSuite
   */
 class EASolverSuite extends FunSuite{
 
+  test("Dict Test"){
+    val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
+
+    val eval = new EAEval("..\\input\\entity_test", dict)
+
+    def known(entity: String) : Boolean = {
+      dict.has(entity)
+    }
+
+    val entitys:List[String] = eval.testCases flatMap (_.entity)
+
+    (entitys filterNot known) foreach println
+  }
+
+  test("case Test"){
+    val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
+    val eval = new EAEval("..\\input\\entity_test", dict)
+
+    val entitys:List[String] = eval.testCases flatMap (_.entity)
+
+    //entitys foreach println
+    assert(entitys forall (_.length > 0 ))
+  }
+
   test("RecentFirst"){
     val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
 

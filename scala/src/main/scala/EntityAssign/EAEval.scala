@@ -17,6 +17,7 @@ import java.lang.NumberFormatException
  */
 class EntityDict(dictPath : String)
 {
+  type EntityID
   val entityInfo : List[(String, Int)] = {
     val itr = io.Source.fromFile(dictPath).getLines
     val lines: List[String] = itr.toList
@@ -27,20 +28,24 @@ class EntityDict(dictPath : String)
         //val entity = line.substring(idx+1).trim
         val tokens = line.trim().split("\t")
         val groupNum = tokens(0).trim().toInt
-        val entitys = tokens.slice(1, tokens.length).toList
-        entitys map (x => (x, groupNum))
-      }catch{
+        val entitys = tokens.slice(1, tokens.length).toList map (_.toLowerCase)
+        val nonEmpty = (entitys filterNot (_.length==0))
+        nonEmpty map (x => (x, groupNum))
+      } catch {
         case e:NumberFormatException => throw e
       }
     }
     (lines map parseLine) flatten
   }
   val entityList : List[String] = entityInfo map (_._1)
-  val entity2group : Map[String, Int]= entityInfo.toMap
+  private val entity2group : Map[String, Int]= entityInfo.toMap
   val group : Map[Int, List[String]] = {
     val groupedTemp = entityInfo.groupBy(_._2)
     groupedTemp map (x => (x._1, x._2 map (_._1)))
   }
+
+  def getGroup(entity: String) : Int = entity2group(entity.toLowerCase)
+  def has(entity:String) : Boolean = entity2group.contains(entity.toLowerCase)
   def extractFrom(str : String) : List[String] = {
     def getIfExist(dest: String)(pattern: String) : Option[String] = {
       val idx = dest.toLowerCase().indexOfSlice(pattern.toLowerCase())
@@ -67,7 +72,7 @@ class EntityDict(dictPath : String)
   }
 }
 
-class EACase(val entity : String, val targetSent : String, val context : List[String]){
+class EACase(val entity : Iterable[String], val targetSent : String, val context : List[String]){
 
 }
 
@@ -91,12 +96,19 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
   def loadCase(file: File): EACase = {
     try {
       val lines: Array[String] = readEuckr(file).toArray
-      val entity = lines(0)
+      val rawEntity = lines(0)
+      val entitys:Iterable[String] = {
+        if(rawEntity== "-")
+          Nil
+        else
+          rawEntity.split(",") map (_.trim)
+      }
+
       val strTargetLen = lines(1).toInt
       val strTarget = lines.slice(2, 2 + strTargetLen).mkString("\n")
 
       val contexts: List[String] = parseContextSentences(lines.slice(2 + strTargetLen, lines.length))
-      new EACase(entity, strTarget, contexts)
+      new EACase(entitys, strTarget, contexts)
     }catch {
       case e: NumberFormatException => {
         println(file.getPath)
@@ -119,62 +131,62 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
     cases
   }
 
+  def isSuccess(arg : (EACase, List[String])) : Boolean = {
+    val answer : Iterable[Int] = arg._1.entity map entityDict.getGroup
+    val found : Iterable[Int] = arg._2 map entityDict.getGroup
+    answer.toSet == found.toSet
+  }
+
   def evalPerformance(solver :EASolver) : Float = {
-    val results : List[Option[String]] = testCases map solver.solve
+    val results : List[List[String]] = testCases map solver.solve
     val total  = results.length
-    def isSuccess(arg : (EACase, Option[String])) : Boolean = {
-      val answer = arg._1.entity
-      val found = arg._2
-      found match {
-        case None => answer == "-"
-        case Some(s) => {
-          if( answer == "-")
-            false
-          else
-            entityDict.entity2group(s) == entityDict.entity2group(answer)
-        }
-      }
-    }
+
     val suc :Int = (testCases zip results) count isSuccess
     return (suc.toFloat/total)
   }
 
   def showResult(solver : EASolver) = {
-    val results : List[Option[String]] = testCases map solver.solve
-    def show(item : (Option[String], EACase)) : Unit= {
-      val sentence = item._2.targetSent
-      val answer = item._2.entity
-      val strResult = item._1 match {
-        case None => "None"
-        case Some(s) => s
+    val results : List[List[String]] = testCases map solver.solve
+    def show(item : (EACase,List[String])) : Unit= {
+
+      val answer :String = item._1.entity.mkString(",")
+      val strResult :String = item._2 match {
+        case Nil => "None"
+        case list => list.mkString(",")
       }
-      if( strResult == answer)
-        println(s"$sentence : $strResult(Correct)")
+
+      val sentence = item._1.targetSent
+      if(isSuccess(item))
+        println(s"$sentence : $strResult (Correct)")
       else
-        println(s"$sentence : $strResult($answer)")
+        println(s"$sentence : Result=[$strResult] , but answer = [$answer]")
     }
-    (results zip testCases) foreach show
+    (testCases zip results) foreach show
   }
 }
 
 trait EASolver {
-  def solve(testCase : EACase) : Option[String]
+  def solve(testCase : EACase) : List[String]
 }
 
+// Baseline 1
 class RecentFirst(entityDict: EntityDict) extends EASolver {
-  override def solve(testCase: EACase): Option[String] = {
-    val entityOfTarget : Option[String] = entityDict.extractAnyFrom(testCase.targetSent)
-    def lastMentionedEntity(contexts : List[String]) : Option[String] = {
+  override def solve(testCase: EACase): List[String] = {
+    val entityOfTarget : List[String] = entityDict.extractFrom(testCase.targetSent)
+    def lastMentionedEntity(contexts : List[String]) : List[String] = {
       // If tail has Some give it, if tail None, then do at the head
       contexts match {
-        case Nil => None
-        case head::tail => lastMentionedEntity(tail) match {
-          case Some(x) => Some(x)
-          case None => entityDict.extractAnyFrom(head)
+        case Nil => Nil
+        case head::tail => {
+          val preEntity = lastMentionedEntity(tail)
+          if(preEntity == Nil)
+            entityDict.extractFrom(head)
+          else
+            preEntity
         }
       }
     }
-    if (entityOfTarget.isDefined)
+    if (entityOfTarget != Nil)
       entityOfTarget
     else{
       lastMentionedEntity(testCase.context)
@@ -183,17 +195,19 @@ class RecentFirst(entityDict: EntityDict) extends EASolver {
 }
 
 class FirstOnly(entityDict: EntityDict) extends EASolver {
-  def firstEntity(texts : List[String]) : Option[String] = {
+  def firstEntity(texts : List[String]) : List[String] = {
     texts match {
-      case Nil => None
-      case head::tail => entityDict.extractAnyFrom(head) match {
-        case None => firstEntity(tail)
-        case Some(s) => Some(s)
+      case Nil => Nil
+      case head::tail => {
+        val headEntity = entityDict.extractFrom(head)
+        if( headEntity.isEmpty )
+          firstEntity(tail)
+        else
+          headEntity
       }
     }
-
   }
-  override def solve(testCase: EACase): Option[String] = {
+  override def solve(testCase: EACase): List[String] = {
     firstEntity(testCase.context :+ testCase.targetSent)
   }
 }

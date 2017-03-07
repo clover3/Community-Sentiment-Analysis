@@ -8,11 +8,13 @@ class EntityDictSuite extends FunSuite {
   test("EntityDict Test") {
     val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
 
-    val groupAvante = dict.entity2group("아방이")
-    val groupAvante2 = dict.entity2group("아반떼")
+    val groupAvante = dict.getGroup("아방이")
+    val groupAvante2 = dict.getGroup("아반떼")
     assert(groupAvante === groupAvante2)
 
-    dict.group(groupAvante) foreach println
+
+    dict.entityList foreach println
+    println("End")
   }
 
 }
