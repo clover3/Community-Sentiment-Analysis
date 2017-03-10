@@ -6,6 +6,7 @@ extern void all_test();
 extern void find_frequent_pattern();
 extern int alg_cluster();
 extern void resolve_omission_indexed();
+extern void affinity_job(string corpus_path);
 
 int main(int argc, char *argv[])
 {
@@ -60,6 +61,16 @@ int main(int argc, char *argv[])
 	{
 		cout << "Task>> Recover omission" << endl;
 		resolve_omission_indexed();
+	}
+	else if (command == 6)
+	{
+		cout << "Task>> car_frequent_pattern " << endl;
+		car_frequent_pattern(corpus_path);
+	}
+	else if (command == 7)
+	{
+		cout << "Task>> Eval Effinity" << endl;
+		affinity_job(corpus_path);
 	}
 	return 0;
 }

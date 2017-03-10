@@ -22,3 +22,5 @@ FrequentSet prune_candidate(const Docs& docs, const FrequentSet& C_k, const Freq
 void print_function_complete(const char* function_name);
 
 void find_frequent_pattern(string corpus_path);
+
+void car_frequent_pattern(string corpus_path);

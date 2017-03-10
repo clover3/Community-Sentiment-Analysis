@@ -85,3 +85,36 @@ Set2<Word_ID> expand_word(int word, MCluster& cluster)
 	}
 	return word_ids;
 }
+
+function<string(int)> FunctorIdx2Word(MCluster mcluster, Idx2Word idx2word)
+{
+	function<string(int) > f = [mcluster, idx2word](int idx){
+		if (idx > TEN_MILLION)
+		{
+			vector<int> idxs = mcluster.get_words(idx);
+			size_t sublen = min(idxs.size(), (size_t)10);
+			vector<int> subwords(idxs.begin(), idxs.begin() + sublen);
+			function<string(int)> mapper = [idx2word](const int idx){
+				auto token = idx2word.find(idx);
+				if (token != idx2word.end()){
+					string word = token.operator*().second;
+					return word;
+				}
+				else
+					return string("null");
+			};
+			vector<string> words = mapf(subwords, mapper);
+			string ret = "g[";
+			for (auto word : words)
+				ret += string(word + ",");
+			ret += "]";
+			return ret;
+		}
+		else
+		{
+			string ret = idx2word.find(idx).operator*().second;
+			return ret;
+		}
+	};
+	return f;
+}

@@ -235,7 +235,7 @@ function<vector<int>(vector<int>, vector<int>)> vector_except = [](vector<int> v
 };
 
 // TODO optimize it
-uint Docs::count_occurence(ItemSet itemSet) const
+uint Docs::count_occurence(vector<int> itemSet) const
 {
 	// Count using inverted index;
 	vector<vector<int>> vector_occurrence;

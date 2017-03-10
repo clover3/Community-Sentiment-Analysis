@@ -144,6 +144,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Affinity.cpp" />
     <ClCompile Include="AM.cpp" />
     <ClCompile Include="AMTest.cpp" />
     <ClCompile Include="Cluster.cpp" />
@@ -158,6 +159,7 @@
     <ClCompile Include="word2idx.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Affinity.h" />
     <ClInclude Include="AM.h" />
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="Dependency.h" />
@@ -182,6 +184,7 @@
     <None Include="3_EvalDependecny.bat" />
     <None Include="4_OmissionRecover.old.bat" />
     <None Include="5_RecoverEllipsis.bat" />
+    <None Include="6_CarFrequentPattern.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

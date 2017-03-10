@@ -72,3 +72,6 @@ private:
 
 
 Set2<Word_ID> expand_word(int word, MCluster& cluster);
+
+
+function<string(int)> FunctorIdx2Word(MCluster mcluster, Idx2Word idx2word);

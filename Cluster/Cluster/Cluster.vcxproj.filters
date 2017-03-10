@@ -75,6 +75,9 @@
     <ClCompile Include="embedding.cpp">
       <Filter>Source Files\clustering</Filter>
     </ClCompile>
+    <ClCompile Include="Affinity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="word2idx.h">
@@ -116,6 +119,9 @@
     <ClInclude Include="Dependency.h">
       <Filter>Header Files\Dependency</Filter>
     </ClInclude>
+    <ClInclude Include="Affinity.h">
+      <Filter>Header Files\Dependency</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Document.txt">
@@ -139,6 +145,9 @@
       <Filter>bat</Filter>
     </None>
     <None Include="4_OmissionRecover.old.bat">
+      <Filter>bat</Filter>
+    </None>
+    <None Include="6_CarFrequentPattern.bat">
       <Filter>bat</Filter>
     </None>
   </ItemGroup>

@@ -480,6 +480,33 @@ void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& label
 	fout.close();
 }
 
+void save_cluster(map<int,int> cluster, string path)
+{
+	map<int, list<int>> c;
+	for (auto token : cluster)
+	{
+		int word = token.first;
+		int cluster_id = token.second;
+		if (c.find(cluster_id) == c.end())
+		{
+			c[cluster_id] = list<int>();
+		}
+		c[cluster_id].push_back(word);
+	}
+
+	ofstream fout(path);
+	for (auto& group : c)
+	{
+		fout << group.first;
+		for (auto item : group.second)
+		{
+			fout << " " << item;
+		}
+		fout << endl;
+	}
+	fout.close();
+}
+
 /*
 parameter :
 

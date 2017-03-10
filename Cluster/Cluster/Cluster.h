@@ -112,5 +112,7 @@ int find_min(const vector<float>& source, const vector<Centroid>& candidates);
 void cluster_embedding();
 
 map<int, int> loadCluster(string path);
+
+void save_cluster(map<int, int> cluster, string path);
 void save_cluster(string path, Embeddings& eb, Word2Idx& word2idx, Labels& labels);
 void apply_cluster(Idx2Word& idx2word, map<int, int>& cluster);

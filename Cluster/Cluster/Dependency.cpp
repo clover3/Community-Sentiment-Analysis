@@ -463,7 +463,7 @@ vector<Dependency> eval_dependency(string corpus_path)
 	cout << "Loading clusters...";
 	vector<string> cluster_path = { "cluster_0.txt", "cluster_1.txt", "cluster_2.txt", "cluster_3.txt", "cluster_4.txt",
 		                             "cluster_5.txt", "cluster_6.txt", "cluster_7.txt", "cluster_8.txt", "cluster_9.txt" };
-
+	
 	MCluster mcluster;
 	mcluster.add_clusters(cluster_path);
 
@@ -499,12 +499,15 @@ vector<Dependency> eval_dependency(string corpus_path)
 	cout << "done" << endl;
 
 	Docs docs(corpus_path, mcluster);
-	FrequentSet fs(data_path + "L2.txt");
+	FrequentSet fs(data_path + "L_Dependency.txt");
 	vector<Dependency> dependsList = get_dependency_mt(docs, fs);
 	//vector<Dependency> dependsList = get_dependency(docs, fs);
 	save_dependency(data_path + "dependency.index", dependsList);
 	return dependsList;
 }
+
+
+
 
 void resolve_ommission(string corpus_path)
 {
