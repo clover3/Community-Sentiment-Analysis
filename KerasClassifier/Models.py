@@ -1,7 +1,8 @@
 import numpy
 from keras.engine import Input, merge, Model
 from keras.layers import Embedding, Dropout, Convolution1D, MaxPooling1D, Flatten, Dense, Activation, Reshape, \
-    Convolution2D
+    Convolution2D, Merge
+from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from keras.optimizers import Adadelta, SGD
 
@@ -50,6 +51,41 @@ def get_simple_model(len_embedding, data, filter_sizes):
     model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
     return model
 
+
+def rnn2way(len_embedding, len_sentence, idx2vect):
+    model = Sequential()
+    size_voca = len(idx2vect)
+    model.add(Embedding(size_voca, len_embedding, input_length=len_sentence))
+    model.add(LSTM(100))
+    model.add(Dense(2, activation='sigmoid'))
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+
+def entityMatchingRnn(len_embedding, len_sentence, data):
+    num_class = 3
+
+    size_voca = len(data.idx2vect)
+
+    sent_model = Sequential()
+    sent_model.add(Embedding(size_voca, len_embedding,
+                       input_length=len_sentence, weights=[data.idx2vect]))
+    sent_model.add(LSTM(100))
+
+    num_entity = len(set(data.keyword2idx.keys()))
+    eew = [numpy.random.uniform(-0.01, 0.01, size=(num_entity, entity_embed_length))]
+
+    entity_model = Sequential()
+    entity_model.add(Embedding(num_entity, entity_embed_length, input_length=1, weights=eew))
+    entity_model.add(Reshape([entity_embed_length]))
+
+    final_model = Sequential()
+    final_model.add(Merge([sent_model, entity_model], mode='concat'))
+    final_model.add(Dense(num_class, activation='softmax', name='sent_level_output'))
+
+    adadelta = Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, clipnorm=l2value)
+    final_model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adadelta)
+
+    return final_model
 
 
 def get2way_model(len_embedding, len_sentence, idx2vect, filter_sizes):

@@ -637,7 +637,8 @@ def train_ee():
         data = load_data_ee(path_lable, path_article, w2v_path, len_embedding)
         pickle.dump(data, open(config_pickle_save_path, "wb"))
 
-    model = get_entity_masking_model(len_embedding, data, [3])
+    #model = get_entity_masking_model(len_embedding, data, [3])
+    model = entityMatchingRnn(len_embedding, len_sentence, data)
     init_weight = model.get_weights()
 
     X = data.x

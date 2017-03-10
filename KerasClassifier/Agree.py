@@ -33,7 +33,7 @@ encoding = "utf-8"
 def load_data_agree(neu_path, pos_path, neg_path, w2v_path, dimension, len_sentence):
     print("Loading Data...")
     # load label table
-    raw_neu = codecs.open(neu_path, "r",encoding=encoding, errors="replace").readlines()
+    raw_neu = codecs.open(neu_path, "r",encoding=encoding, errors="replace").readlines()[:1000]
     raw_pos = codecs.open(pos_path, "r",encoding=encoding, errors="replace").readlines()
     raw_neg = codecs.open(neg_path, "r",encoding=encoding, errors="replace").readlines()
     raw_data = raw_neu +raw_pos+raw_neg
@@ -111,7 +111,7 @@ def run_agreement():
     len_embedding = 100
     len_sentence = 80
 
-    path_prefix = "..\\input\\agree0206_"
+    path_prefix = "..\\input\\agree0223_"
     neu_path = path_prefix + "0.csv"
     pos_path = path_prefix + "1.csv"
     neg_path = path_prefix + "2.csv"

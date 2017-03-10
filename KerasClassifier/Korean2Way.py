@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from CNN_common import load_vec, build_index, tokenize_list
+from CNN_common import load_vec, build_index, tokenize_list, tokenize
 
 from config import *
 from clover_lib import *
@@ -8,6 +8,7 @@ from SA_Label import *
 from Models import *
 import pickle
 
+from keras.models import load_model
 from keras.layers import Convolution1D, Convolution2D, MaxPooling1D, MaxPooling2D, Embedding, Reshape, Lambda
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, merge
@@ -19,7 +20,7 @@ import numpy
 
 
 class DataSet2Way:
-    def __init__(self, dataset_x, dataset_y, idx2vect, len_embedding):
+    def __init__(self, dataset_x, dataset_y, idx2vect, len_embedding, word2idx):
         data = zip(dataset_x, dataset_y)
         #numpy.random.shuffle(data)
         x, y = zip(*data)
@@ -27,6 +28,7 @@ class DataSet2Way:
         self.x = numpy.array(x)
         self.y = numpy.array(y)
         self.idx2vect = idx2vect
+        self.word2idx = word2idx
         self.len_embedding = len_embedding
 
 
@@ -36,8 +38,8 @@ def get_voca(texts):
 
 def load_data(pos_path, neg_path, w2v_path, len_embedding, len_sentence):
     print("Loading Data...")
-    raw_pos = open(pos_path).readlines()
-    raw_neg = open(neg_path).readlines()
+    raw_pos = open(pos_path).readlines()[400:]
+    raw_neg = open(neg_path).readlines()[2000:]
 
     raw_data = raw_pos+raw_neg
     voca = get_voca(raw_data)
@@ -57,7 +59,7 @@ def load_data(pos_path, neg_path, w2v_path, len_embedding, len_sentence):
 
     dataset_x = numpy.array(vectors)
     dataset_y = len(raw_pos)*[(1,0)] + len(raw_neg) * [(0,1)]
-    return DataSet2Way(dataset_x, dataset_y, idx2vect, len_embedding)
+    return DataSet2Way(dataset_x, dataset_y, idx2vect, len_embedding, word2idx)
 
 def run_2way():
     len_embedding = 100
@@ -74,7 +76,8 @@ def run_2way():
         data = load_data(path_pos, path_neg, w2v_path, len_embedding, len_sentence)
         pickle.dump(data, open(config_pickle_save_path, "wb"))
 
-    model = get2way_model(len_embedding, len_sentence, data.idx2vect, [3, 4, 5])
+    #model = get2way_model(len_embedding, len_sentence, data.idx2vect, [3, 4, 5])
+    model = rnn2way(len_embedding, len_sentence, data.idx2vect)
     init_weight = model.get_weights()
 
     X = data.x
@@ -108,6 +111,58 @@ def run_2way():
 
     return model, data.idx2vect, data.word2idx
 
+def convert2index(tokens, word2idx):
+    def translate(x):
+        if x in word2idx:
+            return word2idx[x]
+        else:
+            return 1
+
+    vector = list(map(lambda x: translate(x), tokens))[:len_sentence]
+    while len(vector) < len_sentence :
+        vector.append(0)
+    return numpy.array(vector, dtype='float32')
+
+def load_entity_corpus():
+    path = "..\\input\\EntityLabel_utf.csv"
+    EL_IDX_CONTENT     = 3
+    EL_IDX_LABEL       = 4
+    return [(line[EL_IDX_CONTENT],line[EL_IDX_LABEL]) for line in load_csv(path)]
+
+
+def test_corpus(model, word2idx):
+
+    def predict(model, sentence, entity):
+        tokens = tokenize(sentence)
+        e_sentence = convert2index(tokens, word2idx)
+        X = numpy.array([e_sentence])
+        return numpy.argmax(model.predict(X))
+
+    corpus = load_entity_corpus()
+
+    def calc(label):
+        if label == "-":
+            return 1
+        else:
+            return 0
+
+    acc = 0
+    total = 0
+    for (sentence,label) in corpus:
+        r = predict(model, sentence, word2idx)
+        print r, label
+
+        total +=1
+        if r == calc(label):
+            acc += 1
+
+    print("{}/{}".format(acc,total))
+
 if __name__ == "__main__":
-    run_2way()
-    play_process_completed()
+    model, idx2vect, word2idx = run_2way()
+    #model.save("model.h5")
+    #pickle.dump(word2idx, open("trained2way.p", "wb"))
+    #word2idx = pickle.load(open("trained2way.p", "rb"))
+    #model = load_model("model.h5")
+    #test_corpus(model, word2idx)
+   #play_process_completed()
