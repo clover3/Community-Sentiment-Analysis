@@ -16,3 +16,13 @@ bool sorted(vector<int> itemSet)
 	}
 	return true;
 }
+
+string join(vector<string> v, string delimiter)
+{
+	string result = "";
+	if (v.size() > 0)
+		result += v[0];
+	for (int i = 1; i < v.size(); i++)
+		result += delimiter + v[i];
+	return result;
+}

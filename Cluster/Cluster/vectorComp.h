@@ -87,3 +87,5 @@ static vector<int> range(int start, int end)
 	}
 	return ret;
 }
+
+string join(vector<string> v, string delimiter);

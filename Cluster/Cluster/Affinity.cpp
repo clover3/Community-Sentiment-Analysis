@@ -24,17 +24,32 @@ void save_affinity(list<Affinity> &affinityList, string path)
 
 void save_affinity_viewable(list<Affinity> &affinityList, string path, MCluster& cluster, Idx2Word idx2word)
 {
-	auto idx2wordEx = FunctorIdx2Word(cluster, idx2word);
 	ofstream fout(path);
+	function<string(int)> idx2word_func = [idx2word](int word){
+		return idx2word.find(word).operator*().second;
+	};
+
+	function<string(int)> enum_words = [cluster, idx2word_func](int word){
+		if (word > TEN_MILLION)
+		{
+			vector<int> words = cluster.get_words(word);
+			vector<string> wordStrs = mapf(words, idx2word_func);
+			return join(wordStrs, ",");
+		}
+		else
+			return idx2word_func(word);
+	};
+
 	for (auto a : affinityList)
 	{
-		fout << idx2wordEx(a.word1) << "\t" 
-			<< idx2wordEx(a.word2) << "\t" 
+		string carName = idx2word[cluster.get_words(a.word2)[0]];
+		string tokens = enum_words(a.word1);
+		fout << carName << "\t" 
+			<< tokens  << "\t"
 			<< a.affinity << endl;
 	} 
 	fout.close();
 }
-
 
 double affinity(const int itemA, const int itemB, const Docs& docs)
 {
@@ -54,7 +69,7 @@ double affinity(const int itemA, const int itemB, const Docs& docs)
 void affinity_job(string corpus_path)
 {
 	// Load clusters
-	vector<string> cluster_path = { "cluster_4.txt", "cluster_6.txt", "cluster_car.txt" };
+	vector<string> cluster_path = { "cluster_a1.txt", "cluster_a2.txt", "cluster_car.txt" };
 	MCluster mcluster;
 	mcluster.add_clusters(cluster_path);
 
@@ -63,9 +78,12 @@ void affinity_job(string corpus_path)
 
 	FrequentSet fs(data_path + "L_Dependency.txt");
 	auto affinityList = EvalAffinity(fs, docs);
+	cout << "Saving Affinity as index" << endl;
 	save_affinity(affinityList, data_path + "CarAffinity.index");
 
+	cout << "Saving Affinity as text" << endl;
 	Idx2Word idx2word = load_idx2word(common_input + "idx2word");
 	save_affinity_viewable(affinityList, data_path + "CarAffinity.txt", mcluster, idx2word);
 }
 
+ 

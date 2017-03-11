@@ -367,7 +367,7 @@ void car_frequent_pattern(string corpus_path)
 {
 	// Load one cluster
 	cout << "Loading clusters..."<<endl;
-	vector<string> cluster_path = { "cluster_4.txt", "cluster_6.txt", "cluster_car.txt"};
+	vector<string> cluster_path = { "cluster_a1.txt", "cluster_a2.txt", "cluster_car.txt"};
 	MCluster mcluster;
 	mcluster.add_clusters(cluster_path);
 

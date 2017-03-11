@@ -1,4 +1,4 @@
-import EntityAssign.{EAEval, EntityDict, FirstOnly, RecentFirst}
+import EntityAssign._
 import org.scalatest.FunSuite
 
 /**
@@ -35,15 +35,19 @@ class EASolverSuite extends FunSuite{
 
     val eval = new EAEval("..\\input\\entity_test", dict)
 
-    val solver1 = new RecentFirst(dict)
+    val solver1 = new Recent(dict)
     val accuracyRecent = eval.evalPerformance(solver1)
 
-    val solver2 = new FirstOnly(dict)
-    val accuracyFirst = eval.evalPerformance(solver2)
+    val solver2 = new RecentsFirst(dict)
+    val accuracyRecentFirst = eval.evalPerformance(solver2)
 
-    println(s"Accuracy[Recent First] : $accuracyRecent")
+    val solver3 = new FirstOnly(dict)
+    val accuracyFirst = eval.evalPerformance(solver3)
+
+    println(s"Accuracy[Baseline1] : $accuracyRecent")
+    println(s"Accuracy[Baseline2] : $accuracyRecentFirst")
     println(s"Accuracy[First Only]   : $accuracyFirst")
 
-    eval.showResult(solver1)
+    //eval.showResult(solver = solver1)
   }
 }

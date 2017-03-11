@@ -17,8 +17,8 @@ import java.lang.NumberFormatException
  */
 class EntityDict(dictPath : String)
 {
-  type EntityID
-  val entityInfo : List[(String, Int)] = {
+  type EntityID = Int
+  val entityInfo : List[(String, EntityID)] = {
     val itr = io.Source.fromFile(dictPath).getLines
     val lines: List[String] = itr.toList
     def parseLine(line: String): List[(String, Int)] = {
@@ -37,6 +37,7 @@ class EntityDict(dictPath : String)
     }
     (lines map parseLine) flatten
   }
+  // List of all entity
   val entityList : List[String] = entityInfo map (_._1)
   private val entity2group : Map[String, Int]= entityInfo.toMap
   val group : Map[Int, List[String]] = {
@@ -44,8 +45,10 @@ class EntityDict(dictPath : String)
     groupedTemp map (x => (x._1, x._2 map (_._1)))
   }
 
+
   def getGroup(entity: String) : Int = entity2group(entity.toLowerCase)
   def has(entity:String) : Boolean = entity2group.contains(entity.toLowerCase)
+  def hasAny(str:String) : Boolean = extractFrom(str) != Nil
   def extractFrom(str : String) : List[String] = {
     def getIfExist(dest: String)(pattern: String) : Option[String] = {
       val idx = dest.toLowerCase().indexOfSlice(pattern.toLowerCase())
@@ -71,6 +74,43 @@ class EntityDict(dictPath : String)
       Some(r.head)
   }
 }
+
+
+class EATool(dict: EntityDict) {
+  def lastMentionedEntity(contexts: List[String]): List[String] = {
+    // If tail has Some give it, if tail None, then do at the head
+    contexts match {
+      case Nil => Nil
+      case head :: tail => {
+        val preEntity = lastMentionedEntity(tail)
+        if (preEntity == Nil)
+          dict.extractFrom(head)
+        else
+          preEntity
+      }
+    }
+  }
+  def firstEntity(texts : List[String]) : List[String] = {
+    texts match {
+      case Nil => Nil
+      case head::tail => {
+        val headEntity = dict.extractFrom(head)
+        if( headEntity.isEmpty )
+          firstEntity(tail)
+        else
+          headEntity
+      }
+    }
+  }
+  def mostFrequent(texts : List[String]) : Int = {
+    val entityAll:List[Int] = texts flatMap dict.extractFrom map dict.getGroup
+    entityAll.groupBy(identity).maxBy(_._2.size)._1
+  }
+  def isMostFrequent(text: List[String], entity:String) : Boolean = {
+    mostFrequent(text) == dict.getGroup(entity)
+  }
+}
+
 
 class EACase(val entity : Iterable[String], val targetSent : String, val context : List[String]){
 
@@ -170,44 +210,36 @@ trait EASolver {
 }
 
 // Baseline 1
-class RecentFirst(entityDict: EntityDict) extends EASolver {
+class Recent(entityDict: EntityDict) extends EASolver {
+  val tool = new EATool(entityDict)
   override def solve(testCase: EACase): List[String] = {
     val entityOfTarget : List[String] = entityDict.extractFrom(testCase.targetSent)
-    def lastMentionedEntity(contexts : List[String]) : List[String] = {
-      // If tail has Some give it, if tail None, then do at the head
-      contexts match {
-        case Nil => Nil
-        case head::tail => {
-          val preEntity = lastMentionedEntity(tail)
-          if(preEntity == Nil)
-            entityDict.extractFrom(head)
-          else
-            preEntity
-        }
-      }
-    }
     if (entityOfTarget != Nil)
       entityOfTarget
     else{
-      lastMentionedEntity(testCase.context)
+      tool.lastMentionedEntity(testCase.context)
+    }
+  }
+}
+
+class RecentsFirst(entityDict: EntityDict) extends Recent(entityDict) {
+  override def solve(testCase: EACase): List[String] = {
+    val entityOfTarget : List[String] = entityDict.extractFrom(testCase.targetSent)
+
+    if (entityOfTarget != Nil)
+      entityOfTarget
+    else{
+      tool.lastMentionedEntity(testCase.context) match {
+        case head::tail => List(head)
+        case Nil => Nil
+      }
     }
   }
 }
 
 class FirstOnly(entityDict: EntityDict) extends EASolver {
-  def firstEntity(texts : List[String]) : List[String] = {
-    texts match {
-      case Nil => Nil
-      case head::tail => {
-        val headEntity = entityDict.extractFrom(head)
-        if( headEntity.isEmpty )
-          firstEntity(tail)
-        else
-          headEntity
-      }
-    }
-  }
+  val tool = new EATool(entityDict)
   override def solve(testCase: EACase): List[String] = {
-    firstEntity(testCase.context :+ testCase.targetSent)
+    tool.firstEntity(testCase.context :+ testCase.targetSent)
   }
 }
