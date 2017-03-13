@@ -1,8 +1,12 @@
 import java.io.FileNotFoundException
 
 import org.scalatest.FunSuite
+
 import scala.collection.JavaConversions._
-import java.util.List;
+import java.util.List
+import maxent.Instance
+
+import maxent.{DataSet, MaxEnt};
 
 /**
   * Created by user on 2017-03-07.

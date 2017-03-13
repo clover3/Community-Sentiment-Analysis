@@ -17,4 +17,13 @@ class EntityDictSuite extends FunSuite {
     println("End")
   }
 
+  test("Get Name Test")
+  {
+    val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
+    val name1toTen = for(
+      i <- 1 until 10
+    ) yield dict.getName(i)
+
+    name1toTen foreach println
+  }
 }
