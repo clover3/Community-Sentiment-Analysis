@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class MaxEnt {
 
-    private final static boolean DEBUG = true;
+    private final static boolean DEBUG = false;
 
     private final int ITERATIONS = 200;
 
@@ -139,11 +139,14 @@ public class MaxEnt {
 
     public void train() {
         for (int k = 0; k < ITERATIONS; k++) {
+            String l = "";
             for (int i = 0; i < functions.size(); i++) {
                 double delta = iis_solve_delta(empirical_expects[i], i);
                 w[i] += delta;
+                l += delta + " ";
             }
-            //System.out.println("ITERATIONS: " + k + " " + Arrays.toString(w));
+            System.out.println("ITERATIONS: " + k + " " + Arrays.toString(w));
+            System.out.println(l);
         }
     }
 

@@ -5,8 +5,8 @@ import org.scalatest.FunSuite
 import scala.collection.JavaConversions._
 import java.util.List
 import maxent.Instance
-
 import maxent.{DataSet, MaxEnt};
+
 
 /**
   * Created by user on 2017-03-07.
@@ -25,4 +25,5 @@ class MaxEntTest extends FunSuite {
     }
     System.out.println("accuracy: " + 1.0 * pass / trainInstances.size)
   }
+
 }

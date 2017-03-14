@@ -59,9 +59,15 @@ class EntityDict(dictPath : String)
   def getGroup(entity: String) : Int = entity2group(entity.toLowerCase)
   def has(entity:String) : Boolean = entity2group.contains(entity.toLowerCase)
   def hasAny(str:String) : Boolean = extractFrom(str) != Nil
+
+  def startOfToken(c : Char) : Boolean = List('.',' ' ,'\n' ,'?').contains(c)
+  def isAlphabet(c:Char) : Boolean = c.isLower || c.isUpper
+  def langInversion(c:Char, c2:Char) : Boolean = !isAlphabet(c) && isAlphabet(c2)
+
   def extractFrom(str : String) : List[String] = {
-    if( cache.contains(str) )
+    if( cache.contains(str) ) {
       cache(str)
+    }
     else
     {
       def getIfExist(dest: String)(pattern: String) : Option[String] = {
@@ -70,17 +76,16 @@ class EntityDict(dictPath : String)
           None
         else if(idx == 0)
           Some(pattern)
-        else {
-          val preChar = dest(idx-1)
-          if(List('.',' ' ,'\n' ,'?').contains(preChar))
-            Some(pattern)
-          else
-            None
-        }
+        else if(startOfToken(dest(idx-1)))
+          Some(pattern)
+        else if(langInversion(dest(idx-1), dest(idx)))
+          Some(pattern)
+        else
+          None
       }
       val temp : List[Option[String]] = entityList map getIfExist(str)
       val result : List[String] = temp flatten
-      val updateCache = cache += (str -> result)
+      val cache2 = cache+= (str->result)
       result
     }
   }
@@ -92,9 +97,18 @@ class EntityDict(dictPath : String)
       Some(r.head)
   }
 
+  def targetContain(str:String, entity :EntityID) : Boolean = {
+    val r = extractFrom(str).toSet map getGroup
+    r.contains(entity)
+  }
+
   // A-B
   def exclusive(setA:Iterable[String], setB:Iterable[String]) : List[String] = {
     val result : Set[Int] = (setA map getGroup toSet) -- (setB map getGroup)
+    result.toList map getName
+  }
+  def union(setA:Iterable[String], setB:Iterable[String]) : List[String] = {
+    val result : Set[Int] = (setA map getGroup toSet) ++ (setB map getGroup)
     result.toList map getName
   }
 }
@@ -187,7 +201,7 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
 
       val sentence = item._1.targetSent
       if(isSuccess(item))
-        println(s"$sentence : $strResult (Correct)")
+        ()//println(s"$sentence : $strResult (Correct)")
       else
         println(s"$sentence : Result=[$strResult] , but answer = [$answer]")
     }

@@ -138,6 +138,15 @@ class ContextModel(entityDict: EntityDict)
   val maxContextLen = 10
   // we will see -3 ~ +3 from context
   val contextSize = 3
+  def entityScore(contexts : Seq[String], targetTokens:Set[String]) : Double = {
+    entityScore(contexts.slice(0, maxContextLen).toSet, targetTokens)
+  }
+
+  def entityScore(contexts : Set[String], targetTokens:Set[String]) : Double = {
+    val common : Set[String] = targetTokens & contexts
+    common.size
+  }
+
   def contextWords(sentence:String, entityID : EID.EntityID) : Seq[String] = {
     // check sentence has entity
     val entityExpression = entityDict.group(entityID)
@@ -153,6 +162,7 @@ class ContextModel(entityDict: EntityDict)
     else
       Nil
   }
+
   def contextWords(testCase:EACase, entityID : EID.EntityID): Set[String] =  {
     // for all sentence in testCase, extrac
     val words : Seq[Seq[String]] = testCase.context map (contextWords(_, entityID))
@@ -185,10 +195,7 @@ class EntityContext(entityDict: EntityDict) extends EASolver {
   def debugPrint(str:String, debug:Boolean) = {
     if(debug) println(str)
   }
-  def entityScore(contexts : Set[String], targetTokens:Set[String]) : Double = {
-    val common : Set[String] = targetTokens & contexts
-    common.size
-  }
+
 
   def solveByContext(testCase: EACase, debug : Boolean): List[Int] = {
     val candidates: List[Int] = tool.allEntityAsID(testCase.targetSent :: testCase.context).toList
@@ -201,7 +208,7 @@ class EntityContext(entityDict: EntityDict) extends EASolver {
       pairs.toMap
     }
     val targetTokens = keyTokens(testCase.targetSent).toSet
-    val entityScores: List[Double] = candidates map (x => entityScore(contextWords(x), targetTokens))
+    val entityScores: List[Double] = candidates map (x => contextModel.entityScore(contextWords(x), targetTokens))
     val candidateAnswer = candidates zip entityScores
     candidateAnswer foreach { x =>
       debugPrint(entityDict.getName(x._1) + "\t: " + x._2, debug)
@@ -214,15 +221,64 @@ class EntityContext(entityDict: EntityDict) extends EASolver {
   override def solve(testCase: EACase): List[String] = {
     val entity1 = entityDict.extractFrom(testCase.targetSent)
     lazy val entity2 = solveByContext(testCase, false) map entityDict.getName
-    if( entity1.nonEmpty)
       entity1
-    else
-      entity2
   }
 }
 
-class StructureSolver(entityDict: EntityDict, trainData : List[EACase]) extends EASolver {
-  val classifier = new EAClassifier(entityDict)
+class EAContextCascade(entityDict: EntityDict) extends EASolver {
+  val tool = new EATool(entityDict)
+  val contextModel = new ContextModel(entityDict)
+
+  def contextText(str:String, entityID: EntityID) : Seq[String] = {
+    if(entityDict.targetContain(str, entityID))
+      contextModel.contextWords(str, entityID)
+    else
+      keyTokens(str)
+  }
+  def contextTexts(list:List[(String,Boolean)], entityID: EntityID) : Seq[String] = list match {
+    case (text,true)::tail => {
+      contextText(text, entityID) ++ contextTexts(tail, entityID)
+    }
+    case (text,false)::tail => contextTexts(tail, entityID)
+    case Nil => Nil
+  }
+
+  def label(texts:List[String], entity:EntityID) : List[Boolean] = texts match {
+    case head::tail => {
+      val preLabel = label(tail, entity)
+      val explitcit = entityDict.targetContain(head, entity)
+      if(explitcit)
+        true :: preLabel
+      else
+      {
+        val entityContexts = contextTexts(texts zip preLabel, entity)
+        val targetTokens = keyTokens(head).toSet
+        if(contextModel.entityScore(entityContexts, targetTokens) >= 1)
+          true :: preLabel
+        else
+          false :: preLabel
+      }
+    }
+    case Nil => List()
+  }
+
+  def solveByContext(testCase: EACase, debug : Boolean): List[Int] = {
+    val allText = testCase.targetSent :: testCase.context
+    val candidates: List[Int] = tool.allEntityAsID(allText).toList
+    val labels : List[(Int, List[Boolean])] = candidates zip (candidates map (label(allText,_)))
+    val result : List[Int] = labels filter (x => x._2.head ) map (_._1)
+    result
+  }
+
+  override def solve(testCase: EACase): List[String] = {
+    val entity1 = entityDict.extractFrom(testCase.targetSent)
+    lazy val entity2 = solveByContext(testCase, false) map entityDict.getName
+    entityDict.union(entity1,entity2)
+  }
+}
+
+class MESolver(entityDict: EntityDict, trainData : List[EACase], affinity: Affinity) extends EASolver {
+  val classifier = new EAClassifier(entityDict, affinity)
   val trained : MaxEnt = classifier.train(trainData)
   override def solve(testCase: EACase): List[String] = {
     classifier.predict(trained, testCase)

@@ -1,11 +1,12 @@
 package EntityAssign
 import maxent.{Instance, MaxEnt}
+import stringHelper._
 
 import scala.collection.JavaConversions._
 /**
   * Created by user on 2017-03-07.
   */
-class EAClassifier(dict: EntityDict) {
+class EAClassifier(dict: EntityDict, affinity: Affinity) {
   val LABEL_TRUE = 1
   val LABEL_FALSE = 2
   val tool = new EATool(dict)
@@ -54,17 +55,26 @@ class EAClassifier(dict: EntityDict) {
     toInt(fHas)
   }
 
+  def featureAffinity(testcase: EACase, entity : String) : Int = {
+    val sentenceTokens = tokenize(testcase.targetSent).toList
+    (affinity.top3Affinity(dict.getGroup(entity), sentenceTokens) * 10).toInt
+  }
+
   def feature(testCase:EACase, entity: String) : Array[Int] = {
     Array(
       //featureDistPrevSentence(testCase), // #4
       //featureConsistWithPrev(testCase, entity), // #6
       //featureIsFirstMentioned(testCase, entity), // #8
       //featureMostFrequent(testCase, entity), // #9
-      featureCurrent(testCase,entity)
+      featureCurrent(testCase,entity),
+      featureAffinity(testCase, entity)
     )
   }
   def conver2test(testcase: EACase, entity : String) : Instance = {
-    new Instance(3, feature(testcase, entity))
+    println("predict - converting...")
+    val instance = new Instance(3, feature(testcase, entity))
+    println("predict - converted")
+    instance
   }
   def train(data : List[EACase]) : MaxEnt = {
     def convert2Instances(testcase : EACase) : List[Instance] = {
@@ -87,8 +97,11 @@ class EAClassifier(dict: EntityDict) {
     me
   }
   def predict(trained : MaxEnt, testcase :EACase) : List[String] = {
+    println("predict Entry")
     val candidate : Set[String] = tool.allEntity(testcase.targetSent::testcase.context)
+    println("predict - Candidate")
     def test(x: String) : Boolean = trained.classify(conver2test(testcase, x)) == LABEL_TRUE
+    println("predict - classify")
     (candidate filter test).toList
   }
 
