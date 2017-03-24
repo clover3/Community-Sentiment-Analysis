@@ -1,4 +1,7 @@
+import java.io.File
+
 import EntityAssign._
+import com.github.tototoshi.csv.CSVReader
 import org.scalatest.FunSuite
 
 /**
@@ -18,6 +21,16 @@ class EASolverSuite extends FunSuite {
     val entitys: List[String] = eval.testCases flatMap (_.entity)
 
     (entitys filterNot known) foreach println
+  }
+
+  test("Extract Generate") {
+    val path = "C:\\work\\Data\\reddit\\reddit_cars.csv"
+    val reader = new RedditReader(path)
+    val dict = new EntityDict("data\\keywords.txt")
+    val contents : Stream[String] = reader.data map (reader.content(_))
+    val matched : Stream[List[String]] = contents map (dict.extractFrom(_))
+    val display = contents zip matched
+    matched.slice(0,1000) foreach println
   }
 
   test("case Test") {
@@ -42,11 +55,11 @@ class EASolverSuite extends FunSuite {
 
     val solver1 = new Recent(dict)
     val accuracyRecent = eval.evalPerformance(solver1)
-    println(s"Accuracy[Baseline1] : $accuracyRecent")
+    println(s"Accuracy[Recent] : $accuracyRecent")
 
     val solver2 = new RecentsFirst(dict)
     val accuracyRecentFirst = eval.evalPerformance(solver2)
-    println(s"Accuracy[Baseline2] : $accuracyRecentFirst")
+    println(s"Accuracy[Recent(One Entity)] : $accuracyRecentFirst")
 
     val solver3 = new FirstOnly(dict)
     val accuracyFirst = eval.evalPerformance(solver3)

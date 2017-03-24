@@ -81,7 +81,7 @@ class EntityDict(dictPath : String)
         else if(langInversion(dest(idx-1), dest(idx)))
           Some(pattern)
         else
-          None
+          getIfExist(dest.substring(idx+1))(pattern)
       }
       val temp : List[Option[String]] = entityList map getIfExist(str)
       val result : List[String] = temp flatten
@@ -201,7 +201,7 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
 
       val sentence = item._1.targetSent
       if(isSuccess(item))
-        ()//println(s"$sentence : $strResult (Correct)")
+        println(s"$sentence : $strResult (Correct)")
       else
         println(s"$sentence : Result=[$strResult] , but answer = [$answer]")
     }
