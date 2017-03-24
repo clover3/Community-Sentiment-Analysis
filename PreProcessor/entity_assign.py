@@ -237,6 +237,17 @@ def generate_sentence_context(label_data_path):
                 result.append(s[EL_IDX_CONTENT])
         return result
 
+    def get_article_sentence_before(ta_id, max_id):
+        result = []
+        (thread_id, article_id) = ta_id
+
+        for s in sentences:
+            tid_s = s[EL_IDX_THREAD_ID]
+            aid_s = s[EL_IDX_ARTICLE_ID]
+            if tid_s == thread_id and aid_s == article_id and s[EL_IDX_SENTENCE_ID] < max_id:
+                result.append(s[EL_IDX_CONTENT])
+        return result
+
     def get_sentence_by_id(sid):
         for s in sentences:
             if int(s[EL_IDX_SENTENCE_ID]) == sid:
@@ -266,6 +277,12 @@ def generate_sentence_context(label_data_path):
             for sentence in get_article_sentence(ta_id):
                 context.append((sentence, author))
 
+        # Now add sentence of current post
+        ta_id = get_thread_article_id(sentence_structure)
+        author = get_author(ta_id)
+        for sentence in get_article_sentence_before(ta_id, sentenceID):
+            context.append((sentence, author))
+
         return context
 
     begin = sentences[0][EL_IDX_SENTENCE_ID]
@@ -281,14 +298,14 @@ def generate_sentence_context(label_data_path):
 
     return [generate_case(case) for case in cases]
 
-def save_as_files(data):
+def save_as_files(data, dirPath):
     index = 0
 
     def num_lines(text):
         return text.count('\n')+1
 
     def save_testcase(case, index):
-        f = open("entity_test\\case{}.txt".format(index), "w")
+        f = open(dirPath +"\\case{}.txt".format(index), "w")
         (entity, target, context) = case
         f.write(entity+"\n")
         f.write(str(num_lines(target))+"\n")
@@ -315,21 +332,7 @@ def save_as_files(data):
 
 
 
-class solver:
-
-    def __init__(self, keyword_path):
-        keywordDict = dict()
-
-    def solve_n_eval(self, path):
-        ## for every file in dir(path) solve and summarize accuracy
-
-
-    def solve(self, case):
-        (entity, target, context) = case
-
-
-
 if __name__ == '__main__':
     #entity_assign_corpus()
 
-    save_as_files(generate_sentence_context("..\\input\\EntityLabel.csv"))
+    save_as_files(generate_sentence_context("..\\input\\EntityLabel.csv"), "..\\input\\entity_test")

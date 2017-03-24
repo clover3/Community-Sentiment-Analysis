@@ -7,10 +7,9 @@ import random
 
 
 def make_positive_corpus():
-    keywords = ["말리부", "쏘나타", "그랜져", "그랜저"]
+    keywords = load_entity_dict()
     data = load_csv("..\\input\\bobae_car_tkn_twitter.csv")
     corpus = []
-    kkma = Kkma()
 
     def get_keyword_context(text, keyword, window_size):
         keyword_locations = []
@@ -26,7 +25,7 @@ def make_positive_corpus():
             middle = ["[" + tokens[location] + "]"]
             next = tokens[location+1 : location + window_size +1]
 
-            output = " ".join(prev + middle + next)
+            output = " ".join(prev + next)
             entrys.append(output)
         return entrys
 
@@ -49,12 +48,24 @@ def make_positive_corpus():
                         entry = remove_newline(text)
                         corpus.append(entry)
                         corpus_index += 1
-    save_list(corpus, "..\\input\\car_context_view.txt")
+    save_list(corpus, "..\\input\\car_context.txt")
 
+
+def load_entity_dict():
+    keyword = []
+    list = load_list("..\\input\\EntityDict.txt")
+
+    for elem in list:
+        for raw_token in elem.split("\t")[1:]:
+            token = raw_token.strip()
+            if token:
+                keyword.append(token.encode("utf-8"))
+
+    return keyword
 
 
 def make_negative_corpus():
-    keywords = ["말리부", "쏘나타", "그랜져", "그랜저"]
+    keywords = load_entity_dict()
     data = load_csv("..\\input\\bobae_car_tkn_twitter.csv")
     corpus = []
 
@@ -89,5 +100,6 @@ def make_negative_corpus():
 
 
 if __name__ == '__main__':
+    #load_entity_dict()
     make_positive_corpus()
     #make_negative_corpus()

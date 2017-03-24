@@ -731,6 +731,19 @@ def recommendation_ranking():
     for post in bad_posts[:20]:
         print post[1]
 
+
+def load_relation_save_as_text():
+
+    related_dic = pickle.load(open("targetDict.p", "rb"))
+    fp = open("bobae_relation.txt","w")
+    for key in related_dic:
+        (t1,a1) = key
+        (t2,a2) = related_dic[key]
+        fp.write("{},{},{},{}\n".format(t1,a1,t2,a2))
+
+
+
+
 def save_relation():
     cursor = 0
     size = 100000
@@ -748,7 +761,8 @@ if __name__ == '__main__':
     # process_bobae()
     # apply_recovered()
     #generate_context_pair()
-    save_relation()
+    #save_relation()
+    load_relation_save_as_text()
     #recommendation_ranking()
 # create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
 
