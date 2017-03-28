@@ -18,13 +18,13 @@ flags.DEFINE_integer("sdim", 99, "word embedding size")
 flags.DEFINE_integer("edim", 55, "entity embedding size")
 
 flags.DEFINE_integer("sent_len", 100, "maximum number of token in sentence")
-flags.DEFINE_integer("mem_size", 48, "memory size [100]")
+flags.DEFINE_integer("mem_size", 50, "memory size [100]")
 
-flags.DEFINE_float("init_lr", 1000., "initial learning rate [0.01]")
+flags.DEFINE_float("init_lr", 0.1, "initial learning rate [0.01]")
 
 flags.DEFINE_float("max_grad_norm", 50, "clip gradients to this norm [50]")
 flags.DEFINE_boolean("is_test", False, "True for testing, False for Training [False]")
-flags.DEFINE_boolean("show", False, "print progress [False]")
+flags.DEFINE_boolean("show", True, "print progress [False]")
 
 flags.DEFINE_string("checkpoint_dir", "checkpoint_dir", "checkpoint_dir")
 flags.DEFINE_string("data_name", "small", "data set name [ptb]")

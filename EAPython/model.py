@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from past.builtins import xrange
 from view import Logger
+import time
 
 
 def print_shape(text, matrix):
@@ -58,6 +59,8 @@ class MemN2N(object):
         self.last_weight = []
 
         self.logger = Logger()
+        self.accuracy = None
+        self.update_op_acc = None
 
     def init_LE(self):
         option = 'random'
@@ -100,6 +103,14 @@ class MemN2N(object):
             ee_mat = np.concatenate((first_row, iden), 0)
             return tf.Variable(initial_value=ee_mat, dtype=tf.float32)
 
+    def activate_label(self, prob_tensor):
+        bias_value = -0.5
+        bias = tf.constant(bias_value, dtype=tf.float32, shape=prob_tensor.shape)
+        return tf.round(tf.sigmoid(tf.add(prob_tensor, bias)))
+
+    def all_match(self, tensor1, tensor2):
+        return tf.reduce_sum(tf.cast(tf.not_equal(tensor1, tensor2), tf.float32), 0)
+
 
     def build_model(self):
         print("Building Model...", end="")
@@ -110,6 +121,7 @@ class MemN2N(object):
         self.EE = self.init_EE(self.edim)
         self.LE = self.init_LE()
         self.DE = self.init_DE()
+        self.W  = tf.Variable(tf.constant(0.3, shape=[2, 1]))
 
         # mp is predicted entity
         m_result = self.build_network()
@@ -117,6 +129,12 @@ class MemN2N(object):
         real_m = tf.reduce_sum(tf.nn.embedding_lookup(self.EE, self.real_entity), 0)
         self.real_m = real_m
         self.m_result = m_result
+
+        labels = self.activate_label(real_m)
+        prediction = self.activate_label(m_result)
+        diff = self.all_match(labels, prediction)
+        zeros = tf.zeros([1,], dtype=tf.int32)
+        self.accuracy, self.update_op_acc = tf.contrib.metrics.streaming_accuracy(diff, zeros)
         self.loss = tf.losses.mean_squared_error(real_m, m_result)
 
         self.lr = tf.Variable(self.current_lr)
@@ -126,7 +144,7 @@ class MemN2N(object):
             self.opt = tf.train.GradientDescentOptimizer(self.lr)
 
             #params = [self.SE, self.QE, self.EE, self.LE, self.DE]
-            params = [self.DE, self.EE]
+            params = [self.LE, self.DE, self.W]
             grads_and_vars = self.opt.compute_gradients(self.loss, params)
             clipped_grads_and_vars = [(tf.clip_by_norm(gv[0], self.max_grad_norm), gv[1]) \
                                       for gv in grads_and_vars]
@@ -166,15 +184,13 @@ class MemN2N(object):
             u_2d = tf.reshape(u, [self.sdim, -1])
             weights_3 = tf.matmul(mi, u_2d)  ## [context_len]
 
-            raw_weights = weights_2
+            concat = tf.concat([weights_1, weights_2], 1)
+            raw_weights = tf.matmul(concat, self.W)
             # 1-Final) Sum up
             # weights = tf.add(weights_1, tf.add(weights_2, weights_3))
             weights = to_unit_vector(raw_weights)
             weights_T = tf.transpose(weights)
             Cx = tf.stack(self.memory_entity)  ## [context_len * edim]
-
-            len_context = len(self.memory_content)
-            # print_shape("Cx:", Cx)
 
             m = tf.reshape(tf.matmul(weights_T, Cx), [-1])  ## [edim]
 
@@ -183,9 +199,7 @@ class MemN2N(object):
             m0 = tf.reduce_sum(mi_, 0)
 
             mp = tf.add(m, m0)
-
             ones = tf.ones([self.edim,])
-
             mp = tf.minimum(mp, ones)
 
 
@@ -232,11 +246,11 @@ class MemN2N(object):
             target_idx = np.ndarray([1, ], dtype=np.int32)
             target_idx.fill(len(test_case.content))
 
-            (loss, self.step, real_e,
-             real_m, m0,
-             m_result, memory_entity)= self.sess.run(
-                [self.loss, self.global_step, self.real_entity,
-                 self.real_m, self.m0,
+            (_, _,
+             loss, self.step, real_e,
+             m_result, memory_entity) = self.sess.run(
+                [self.optim, self.update_op_acc,
+                 self.loss, self.global_step, self.real_entity,
                  self.m_result, self.memory_entity
                  ], feed_dict = {
                                                     self.content: arr_content,
@@ -245,12 +259,6 @@ class MemN2N(object):
                                                     self.target_idx : target_idx
                                                 }
                                                )
-
-            #self.logger.print("real_e", real_e)
-            #self.logger.print("real_m", real_m)
-            #self.logger.print("arr_ex_entity", arr_ex_entity)
-            #self.logger.print("m_result", m_result)
-            #self.logger.print("memory_entity", memory_entity)
             cost += np.sum(loss)
         if self.show: bar.finish()
         return cost/n_test
@@ -286,9 +294,13 @@ class MemN2N(object):
     def run(self, train_data, test_data):
         if not self.is_test:
             for idx in xrange(self.nepoch):
+                self.sess.run(tf.local_variables_initializer())
+                start = time.time()
                 train_loss = np.sum(self.train(train_data))
+                elapsed = time.time() - start
                 test_loss = np.sum(self.test(test_data, label='Validation'))
                 # Logging
+                accuracy = self.sess.run([self.accuracy])
                 self.log_loss.append([train_loss, test_loss])
                 self.log_perp.append([math.exp(train_loss), math.exp(test_loss)])
 
@@ -296,10 +308,11 @@ class MemN2N(object):
                     'train_perplexity': train_loss,
                     'epoch': idx,
                     'learning_rate': self.current_lr,
-                    'valid_perplexity': test_loss
+                    'valid_perplexity': test_loss,
+                    'accuracy': accuracy,
+                    'elapsed': elapsed
                 }
                 print(state)
-
                 # Learning rate annealing
                 if len(self.log_loss) > 1 and self.log_loss[idx][1] > self.log_loss[idx-1][1] * 0.9999:
                     self.current_lr = self.current_lr / 1.5
