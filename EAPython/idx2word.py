@@ -20,6 +20,8 @@ class Idx2Word:
             if idx >= self.voca_size :
                 self.voca_size = idx+1
 
+    def get_voca(self):
+        return self.word2idx_.keys()
 
     def idx2word(self, idx):
         if idx in self.idx2word_:

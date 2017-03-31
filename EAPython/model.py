@@ -13,8 +13,61 @@ def print_shape(text, matrix):
     print(matrix.shape)
 
 def to_unit_vector(tensor):
-    sum = tf.reduce_sum(tensor, 0)
+    sum = tf.reduce_sum(tensor, 1)
     return tensor / sum
+
+
+
+def load_vec(file_name, idx2word, binary = True):
+    """
+    Loads 300x1 word vecs from Google (Mikolov) word2vec
+    """
+    print("Loading word2vec...")
+    #w2v_cache = "cache\\w2v"
+    #if os.path.isfile(w2v_cache):
+    #    return cPickle.load(open(w2v_cache,"rb"))
+    vocab = idx2word.get_voca()
+
+    mode = ("rb" if binary else "r")
+    word_vecs = {}
+    ndim = 0
+    with open(file_name, mode) as f:
+        header = f.readline()
+        vocab_size, ndim = map(int, header.split())
+        binary_len = np.dtype('float32').itemsize * ndim
+
+        def getline():
+            if binary:
+                return np.fromstring(f.read(binary_len), dtype='float32')
+            else:
+                return np.array(f.readline().split(), dtype='float32')
+
+        for line in xrange(vocab_size):
+            word = []
+            while True:
+                ch = f.read(1)
+                if ch == ' ':
+                    word = ''.join(word)
+                    break
+                if ch != '\n':
+                    word.append(ch)
+            if word in vocab:
+                idx = idx2word.word2idx(word)
+                word_vecs[idx] = getline()
+            else:
+                getline()
+
+    embedding = np.ndarray()
+    l = []
+    for i in range(idx2word.voca_size):
+        if i in word_vecs:
+            l.append(word_vecs[i])
+        else:
+            l.append(np.random.uniform(-0.25,0.25,ndim))
+
+    print("Loaded word2vec...")
+#    cPickle.dump(word_vecs, open(w2v_cache, "wb"))
+    return np.ndarray(l, dtype='float32')
 
 class MemN2N(object):
     def __init__(self, config, sess):
@@ -38,10 +91,17 @@ class MemN2N(object):
         self.is_test = config.is_test
         self.checkpoint_dir = config.checkpoint_dir
 
-        self.content = tf.placeholder(tf.int32, [self.mem_size, self.sent_len], name="content")
-        self.explicit_entity = tf.placeholder(tf.int32, [self.mem_size, self.max_entity], name="explicit_entity")
-        self.real_entity = tf.placeholder(tf.int32, [self.max_entity,], name="real_entity")
-        self.target_idx = tf.placeholder(tf.int32, [1], name="target_idx")
+        self.content = tf.placeholder(tf.int32, [None, self.mem_size, self.sent_len], name="content")
+        self.explicit_entity = tf.placeholder(tf.int32, [None, self.mem_size, self.max_entity], name="explicit_entity")
+        self.real_entity = tf.placeholder(tf.int32, [None, self.max_entity,], name="real_entity")
+        self.target_idx = tf.placeholder(tf.int32, [None, 1], name="target_idx")
+
+        self.SE = None
+        self.QE = None
+        self.EE = None
+        self.LE = None
+        self.DE = None
+        self.W = None
 
         self.memory_content = []
         self.memory_entity = []
@@ -109,7 +169,15 @@ class MemN2N(object):
         return tf.round(tf.sigmoid(tf.add(prob_tensor, bias)))
 
     def all_match(self, tensor1, tensor2):
-        return tf.reduce_sum(tf.cast(tf.not_equal(tensor1, tensor2), tf.float32), 0)
+        return tf.reduce_sum(tf.cast(tf.not_equal(tensor1, tensor2), tf.float32), 1)
+
+    def update_accuracy(self, m_result, real_m):
+        labels = self.activate_label(real_m)
+        prediction = self.activate_label(m_result)
+        d = self.all_match(labels, prediction)
+        zeros = tf.zeros([self.batch_size], dtype=tf.int32)
+        return tf.contrib.metrics.streaming_accuracy(d, zeros)
+
 
 
     def build_model(self):
@@ -121,21 +189,16 @@ class MemN2N(object):
         self.EE = self.init_EE(self.edim)
         self.LE = self.init_LE()
         self.DE = self.init_DE()
-        self.W  = tf.Variable(tf.constant(0.3, shape=[2, 1]))
+        self.W = tf.Variable(tf.constant(0.3, shape=[3, 1]))
 
-        # mp is predicted entity
-        m_result = self.build_network()
-
-        real_m = tf.reduce_sum(tf.nn.embedding_lookup(self.EE, self.real_entity), 0)
+        self.loss = 0
+        m_result = self.memory_network(self.content, self.explicit_entity, self.target_idx)
+        real_m = tf.reshape(tf.reduce_sum(tf.nn.embedding_lookup(self.EE, self.real_entity), 1), m_result.shape)
         self.real_m = real_m
         self.m_result = m_result
+        self.loss += tf.losses.mean_squared_error(real_m, m_result)
 
-        labels = self.activate_label(real_m)
-        prediction = self.activate_label(m_result)
-        diff = self.all_match(labels, prediction)
-        zeros = tf.zeros([1,], dtype=tf.int32)
-        self.accuracy, self.update_op_acc = tf.contrib.metrics.streaming_accuracy(diff, zeros)
-        self.loss = tf.losses.mean_squared_error(real_m, m_result)
+        self.accuracy, self.update_op_acc = self.update_accuracy(m_result, real_m)
 
         self.lr = tf.Variable(self.current_lr)
         if False:
@@ -144,7 +207,7 @@ class MemN2N(object):
             self.opt = tf.train.GradientDescentOptimizer(self.lr)
 
             #params = [self.SE, self.QE, self.EE, self.LE, self.DE]
-            params = [self.LE, self.DE, self.W]
+            params = [self.W, self.LE, self.DE]
             grads_and_vars = self.opt.compute_gradients(self.loss, params)
             clipped_grads_and_vars = [(tf.clip_by_norm(gv[0], self.max_grad_norm), gv[1]) \
                                       for gv in grads_and_vars]
@@ -153,66 +216,85 @@ class MemN2N(object):
             with tf.control_dependencies([inc]):
                 self.optim = self.opt.apply_gradients(clipped_grads_and_vars)
 
-        tf.global_variables_initializer().run()
         self.saver = tf.train.Saver()
+        tf.global_variables_initializer().run()
         print("Complete Building Model")
 
-    def build_network(self):
+    def memory_network(self, content, explicit_entity, target_idx):
         # Step 0
-        mi_ = tf.nn.embedding_lookup(self.EE, self.explicit_entity[0])  ## [edim]
-        m0 = tf.reduce_sum(mi_, 0)
-        self.memory_content.append(self.content[0])
+        self.memory_content = []
+        self.memory_entity = []
+        self.memory_location = []  # [context_len * batch]
+
+        mi_ = tf.nn.embedding_lookup(self.EE, explicit_entity[:,0])  ## [batch * edim]
+        m0 = tf.reduce_sum(mi_, 1)
+        self.memory_content.append(content[:,0])
         self.memory_entity.append(m0)
-        self.memory_location.append(0)
+        self.memory_location.append(tf.zeros([self.batch_size,], tf.int32))
         ## TODO : too many iteration...
         for j in range(1, self.mem_size):
             # 1) Select relevant article
 
             # 1-1) Location
-            weights_1 = tf.nn.embedding_lookup(self.LE, self.memory_location)  ## [context_len * 1]
-
+            weights_1 = tf.transpose(tf.nn.embedding_lookup(self.LE, self.memory_location), [1,0,2])
+            # [batch * context_len * 1]
             # 1-2) Distance
-            dist = [j - x for x in self.memory_location]
-            weights_2 = tf.nn.embedding_lookup(self.DE, dist)  ## [context_len * 1]
+
+            # memory location :
+            j_2d = tf.constant(value = j, shape= [self.batch_size,], dtype=tf.int32)
+            dist = [tf.subtract(j_2d, i) for i in self.memory_location]
+            weights_2 = tf.transpose(tf.nn.embedding_lookup(self.DE, dist), [1, 0, 2])  # [batch * context_len * 1]
 
             # 1-3) Sentence - Sentence
-            Bx_j = tf.nn.embedding_lookup(self.QE, self.content[j])  ## [sent_len * sdim]
-            u = tf.reduce_sum(Bx_j, 0)  ## [sdim]
+            Bx_j = tf.nn.embedding_lookup(self.QE, content[:,j])  # [batch * sent_len * sdim]
+            u = tf.reduce_sum(Bx_j, 1)  ## [batch * sdim]
 
-            Ax_i = tf.nn.embedding_lookup(self.SE, self.memory_content)  ## [context_len * sent_len * sdim ]
-            mi = tf.reduce_sum(Ax_i, 1)  ## [context_len * sdim]
-            u_2d = tf.reshape(u, [self.sdim, -1])
-            weights_3 = tf.matmul(mi, u_2d)  ## [context_len]
+            Ax_i = tf.nn.embedding_lookup(self.SE, self.memory_content)  ## [context_len * batch * sent_len * sdim ]
+            mi = tf.reduce_sum(Ax_i, 2)  ## [batch * context_len * sdim]
+            mi_ = tf.transpose(mi, [1, 0, 2])
+            u_2d = tf.reshape(u, [self.batch_size, self.sdim, -1]) ##
+            weights_3 = tf.matmul(mi_, u_2d)  ## [batch * context_len]
 
-            concat = tf.concat([weights_1, weights_2], 1)
-            raw_weights = tf.matmul(concat, self.W)
+            concat = tf.concat([weights_1, weights_2, weights_3], 2) # [batch * context_len * 2]
+            W__ = tf.tile(self.W, [self.batch_size, 1])
+            W_ = tf.reshape(W__, [self.batch_size, 3, 1])  #[batch * 2 * 1]
+
+            raw_weights = tf.matmul(concat, W_)  # [batch * context_len * 1]
             # 1-Final) Sum up
             # weights = tf.add(weights_1, tf.add(weights_2, weights_3))
-            weights = to_unit_vector(raw_weights)
-            weights_T = tf.transpose(weights)
-            Cx = tf.stack(self.memory_entity)  ## [context_len * edim]
+            weights = tf.scalar_mul(1./j, raw_weights) # [batch * context_len * 1]
+            Cx = tf.transpose(tf.stack(self.memory_entity), [1,2,0])  ## [batch * edim * context_len]
 
-            m = tf.reshape(tf.matmul(weights_T, Cx), [-1])  ## [edim]
+            m = tf.reshape(tf.matmul(Cx, weights), [self.batch_size, self.edim])  ## [batch * edim * 1]
 
             # 2) Updated sum of entity
-            mi_ = tf.nn.embedding_lookup(self.EE, self.explicit_entity[j])  ## [edim]
-            m0 = tf.reduce_sum(mi_, 0)
+            mi_ = tf.nn.embedding_lookup(self.EE, explicit_entity[:,j])  ## [batch * max_entity * edim]
+            m0 = tf.reduce_sum(mi_, 1)
 
             mp = tf.add(m, m0)
-            ones = tf.ones([self.edim,])
+            ones = tf.ones([self.batch_size, self.edim,])
             mp = tf.minimum(mp, ones)
 
-
             # 3) Update
-            self.memory_content.append(self.content[j])
+            self.memory_content.append(content[:,j])
             self.memory_entity.append(mp)
-            self.memory_location.append(j)
+            self.memory_location.append(tf.constant(j, tf.int32, [self.batch_size,]))
 
-        #mi_ = tf.nn.embedding_lookup(self.EE, self.explicit_entity[self.target_idx])  ## [edim]
-        self.m0 = tf.reduce_sum(mi_, 0)
+        def index(tensor):
+            nums = tf.reshape(tf.range(self.batch_size), [self.batch_size, 1])
+            data = tf.reshape(tensor, [self.batch_size, 1])
+            c = tf.concat([data, nums], 1)
+            return tf.reshape(c, shape=[self.batch_size,2])
 
-        m_result = tf.gather(self.memory_entity, self.target_idx)
-        m_result = tf.reshape(m_result, [self.edim,])
+        # [context_len * batch * edim]
+        source = tf.transpose(self.memory_entity, [1,0,2])  # [batch * context * edim]
+
+        result = []
+        for i in range(self.batch_size):
+            idx = target_idx[i][0]
+            piece = source[i][idx]
+            result.append(piece)
+        m_result = tf.reshape(result, [self.batch_size, self.edim])
         return m_result
 
     # if given data is larger than size, use tail with size
@@ -229,66 +311,80 @@ class MemN2N(object):
                 arr[i] = token
         return arr
 
+    class Batch:
+        def __init__(self, batch_size):
+            self.data = []
+            self.bach_size = batch_size
+            self.index = 0
+
+        def enqueue(self, sample):
+            self.data.append(sample)
+
+        def has_next(self):
+            return len(self.data) >= self.index + self.bach_size
+
+        def deque(self):
+            num_input = len(self.data[0])
+            input = [ [] for i in range(num_input)]
+            for i in range(self.bach_size):
+                for j in range(num_input):
+                    item = self.data[self.index+i][j]
+                    input[j].append(item)
+            self.index += self.bach_size
+            return input
+
+    def data2batch(self, data):
+        batch_supplier = self.Batch(self.batch_size)
+        for test_case in data:
+            a = self.init_content([self.mem_size, self.sent_len], test_case.content, 2)
+            b = self.init_content([self.mem_size, self.max_entity], test_case.explicit_entity, 2)
+            c = self.init_content([self.max_entity], test_case.real_entity, 1)
+            target_idx = np.ndarray([1, ], dtype=np.int32)
+            target_idx.fill(min([len(test_case.content), self.mem_size-1]))
+            d = target_idx
+            single = (a, b, c, d)
+            batch_supplier.enqueue(single)
+        return batch_supplier
+
+
     def train(self, data):
         cost = 0
         n_test = len(data)
 
-        if self.show:
-            from clover_lib import ProgressBar
-            bar = ProgressBar('Train', max=n_test)
+        batch_supplier = self.data2batch(data)
 
-        for test_case in data:
-            if self.show: bar.next()
-
-            arr_content = self.init_content([self.mem_size, self.sent_len], test_case.content, 2)
-            arr_ex_entity = self.init_content([self.mem_size, self.max_entity], test_case.explicit_entity, 2)
-            arr_r_entity = self.init_content([self.max_entity], test_case.real_entity, 1)
-            target_idx = np.ndarray([1, ], dtype=np.int32)
-            target_idx.fill(len(test_case.content))
-
+        while batch_supplier.has_next():
+            batch = batch_supplier.deque()
+            feed_dict = {
+                self.content: batch[0],
+                self.explicit_entity: batch[1],
+                self.real_entity: batch[2],
+                self.target_idx: batch[3]
+            }
             (_, _,
-             loss, self.step, real_e,
-             m_result, memory_entity) = self.sess.run(
-                [self.optim, self.update_op_acc,
-                 self.loss, self.global_step, self.real_entity,
-                 self.m_result, self.memory_entity
-                 ], feed_dict = {
-                                                    self.content: arr_content,
-                                                    self.explicit_entity: arr_ex_entity,
-                                                    self.real_entity: arr_r_entity,
-                                                    self.target_idx : target_idx
-                                                }
-                                               )
+            loss) = self.sess.run([self.optim, self.update_op_acc,
+                                               self.loss], feed_dict)
             cost += np.sum(loss)
-        if self.show: bar.finish()
+
         return cost/n_test
 
     def test(self, data, label):
         n_test = len(data)
         cost = 0
 
-        if self.show:
-            from clover_lib import ProgressBar
-            bar = ProgressBar('Test', max=n_test)
+        batch_supplier = self.data2batch(data)
 
-        for test_case in data:
-            if self.show: bar.next()
-
-            arr_content = self.init_content([self.mem_size, self.sent_len], test_case.content, 2)
-            arr_ex_entity = self.init_content([self.mem_size, self.max_entity], test_case.explicit_entity, 2)
-            arr_r_entity = self.init_content([self.max_entity], test_case.real_entity, 1)
-            target_idx = np.ndarray([1, ], dtype=np.int32)
-            target_idx.fill(len(test_case.content))
-
-            loss = self.sess.run([self.loss], feed_dict = {
-                                                    self.content: arr_content,
-                                                    self.explicit_entity: arr_ex_entity,
-                                                    self.real_entity: arr_r_entity,
-                                                    self.target_idx : target_idx
-                                                })
+        while batch_supplier.has_next():
+            batch = batch_supplier.deque()
+            feed_dict = {
+                self.content: batch[0],
+                self.explicit_entity: batch[1],
+                self.real_entity: batch[2],
+                self.target_idx: batch[3]
+            }
+            (loss) = self.sess.run([self.loss], feed_dict)
             cost += np.sum(loss)
 
-        if self.show: bar.finish()
         return cost/n_test
 
     def run(self, train_data, test_data):
@@ -300,9 +396,9 @@ class MemN2N(object):
                 elapsed = time.time() - start
                 test_loss = np.sum(self.test(test_data, label='Validation'))
                 # Logging
-                accuracy = self.sess.run([self.accuracy])
-                self.log_loss.append([train_loss, test_loss])
-                self.log_perp.append([math.exp(train_loss), math.exp(test_loss)])
+                accuracy, self.step = self.sess.run([self.accuracy, self.global_step])
+                #self.log_loss.append([train_loss, test_loss])
+                #self.log_perp.append([math.exp(train_loss), math.exp(test_loss)])
 
                 state = {
                     'train_perplexity': train_loss,

@@ -4,6 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from idx2word import Idx2Word
 from model import MemN2N
+from model import load_vec
 from eadata import TestCase  ## required for pickle
 
 flags = tf.app.flags
@@ -11,7 +12,7 @@ flags = tf.app.flags
 flags.DEFINE_integer("n_entity", 240, "number of entity")
 flags.DEFINE_integer("max_entity", 10, "maximal number of entity per sentence")
 flags.DEFINE_float("init_std", 0.05, "weight initialization std [0.05]")
-flags.DEFINE_integer("batch_size", 128, "batch size to use during training [128]")
+flags.DEFINE_integer("batch_size", 10, "batch size to use during training [128]")
 flags.DEFINE_integer("nepoch", 100, "number of epoch to use during training [100]")
 
 flags.DEFINE_integer("sdim", 99, "word embedding size")
@@ -33,13 +34,17 @@ flags.DEFINE_string("data_name", "small", "data set name [ptb]")
 import pickle
 
 if "__main__" == __name__ :
+    print("Loading data...", end="")
     idx2word = Idx2Word("data\\idx2word")
     train_data = pickle.load(open("data\\dataSet1.p","rb"))
     valid_data = pickle.load(open("data\\dataSet2.p", "rb"))
+    print("Done")
+    w2v = load_vec("", idx2word.get_voca(), False)
 
     flags.DEFINE_integer("nwords", idx2word.voca_size, "number of words in corpus")
     with tf.Session() as sess:
         model = MemN2N(flags.FLAGS, sess)
+        print("Next build model")
         model.build_model()
 
         #if flags.FLAGS.is_test:
