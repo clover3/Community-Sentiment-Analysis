@@ -10,6 +10,9 @@ class Idx2Word:
         self.word2idx_ = dict()
         self.voca_size = 5
 
+        self.trial = 0
+        self.not_found = 0
+
         for line in data:
             idx = int(line.split()[0])
             word = (line.split())[1].strip()
@@ -26,11 +29,15 @@ class Idx2Word:
     def idx2word(self, idx):
         if idx in self.idx2word_:
             return self.idx2word_[idx]
+        if idx == 0 :
+            return "empty"
         else:
             return "Unknown"
 
     def word2idx(self, word):
+        self.trial += 1
         if word in self.word2idx_:
             return self.word2idx_[word]
         else:
+            self.not_found += 1
             return 1

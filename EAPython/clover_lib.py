@@ -12,7 +12,7 @@ IDX_THREAD_ID = 6
 IDX_TEXT_TYPE = 9
 IDX_TOKENS = 10
 
-from progress.bar import Bar
+from progress.bar import *
 
 class ProgressBar(Bar):
     message = 'Loading'
@@ -194,3 +194,38 @@ class FailCounter:
 def flatten(z):
     return [y for x in z for y in x]
 
+
+
+class ListProgress():
+    def __init__(self, l):
+        self.length = len(l)
+        self.bar = IncrementalBar(max=50)
+        self.count = 0
+
+    def step(self):
+        self.count += 1
+        if self.count == self.length / 50 :
+            print("-", end="")
+
+
+class Batch:
+    def __init__(self, batch_size):
+        self.data = []
+        self.bach_size = batch_size
+        self.index = 0
+
+    def enqueue(self, sample):
+        self.data.append(sample)
+
+    def has_next(self):
+        return len(self.data) >= self.index + self.bach_size
+
+    def deque(self):
+        num_input = len(self.data[0])
+        input = [[] for i in range(num_input)]
+        for i in range(self.bach_size):
+            for j in range(num_input):
+                item = self.data[self.index + i][j]
+                input[j].append(item)
+        self.index += self.bach_size
+        return input

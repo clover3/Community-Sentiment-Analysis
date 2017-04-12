@@ -103,18 +103,15 @@ def generate_sentence_context(label_data_path):
 
         return context
 
-    begin = sentences[0][EL_IDX_SENTENCE_ID]
-    end = sentences[-1][EL_IDX_SENTENCE_ID]
-    cases = range(begin, end+1)
 
-    def generate_case(case_id):
-        entity = get_sentence_by_id(case_id)[EL_IDX_LABEL]
-        target = get_sentence_by_id(case_id)[EL_IDX_CONTENT]
-        context = context_for(case_id)
+    def generate_case(sentence):
+        entity = sentence[EL_IDX_LABEL]
+        target = sentence[EL_IDX_CONTENT]
+        context = context_for(sentence[EL_IDX_SENTENCE_ID])
 
         return (entity, target, context)
 
-    return [generate_case(case) for case in cases]
+    return [generate_case(s) for s in sentences]
 
 
 def get_all_entity(label_data_path):
@@ -200,10 +197,10 @@ def gen_simple_entity():
 
 
 if __name__ == '__main__':
-    #r = generate_sentence_context("data\\EntityLabel.csv")
-    #save_as_files(r, "data\\entity_test1")
+    r = generate_sentence_context("data\\EntityLabel.csv")
+    save_as_files(r, "data\\entity_test1")
 
-    #r = generate_sentence_context("data\\EntityLabelSet2.csv")
-    #save_as_files(r, "data\\entity_test2")
+    r = generate_sentence_context("data\\EntityLabel3.csv")
+    save_as_files(r, "data\\entity_test3")
 
-    gen_simple_entity()
+    #gen_simple_entity()

@@ -64,7 +64,7 @@ class DataSet:
                 return tokenize_cache[str]
             else:
                 poses = twitter.pos(str, True, True)
-                res = [pos[0]+pos[1] for pos in poses]
+                res = [pos[0] for pos in poses]
                 tokenize_cache[str] = res
                 return res
 
@@ -131,13 +131,13 @@ def data_loader_tester():
 
 def convert_data2pickle(data_path, pickle_path):
     print("convert_data2pickle({},{})".format(data_path, pickle_path))
-    dict_path = "data\\minEntityDict.txt"
+    dict_path = "..\\input\\EntityDict.txt"
     entity_dict = EntityDict(dict_path)
     idx2word = Idx2Word("data\\idx2word")
-
     data_set = DataSet(data_path, entity_dict, idx2word)
     import pickle
     pickle.dump(data_set.test_cases, open(pickle_path, "wb"))
+    print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
 
 
 def gen_minimal():
@@ -147,5 +147,5 @@ def gen_minimal():
 
 if __name__ == "__main__":
     #data_loader_tester()
-    convert_data2pickle("data\\entity_test1", "data\\dataSet1.p")
-    convert_data2pickle("data\\entity_test2", "data\\dataSet2.p")
+    #convert_data2pickle("data\\entity_test1", "data\\dataSet1.p")
+    convert_data2pickle("data\\entity_test3", "data\\dataSet3.p")
