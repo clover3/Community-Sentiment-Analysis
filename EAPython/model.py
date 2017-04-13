@@ -19,6 +19,11 @@ def to_unit_vector(tensor):
     return tensor / sum
 
 
+def assert_shape(tensor, shape):
+    if tensor.shape != shape:
+        print_shape("Tensor shape error - ", tensor)
+    assert (tensor.shape == shape)
+
 
 def load_vec(file_name, idx2word, binary = True):
     """
@@ -26,8 +31,8 @@ def load_vec(file_name, idx2word, binary = True):
     """
     print("Loading word2vec...")
     w2v_cache = "cache\\w2v"
-    #if os.path.isfile(w2v_cache):
-    #    return pickle.load(open(w2v_cache,"rb"))
+    if os.path.isfile(w2v_cache):
+        return pickle.load(open(w2v_cache,"rb"))
     vocab = idx2word.get_voca()
 
     mode = ("rb" if binary else "r")
@@ -79,6 +84,7 @@ class MemN2N(object):
         self.init_std = config.init_std        ## std to initialize random
         self.batch_size = config.batch_size
         self.nepoch = config.nepoch
+        self.optimizer = config.optimizer
         #### only 1 hop
         self.sdim = config.sdim               ## sentence expression dimension
         self.edim = config.edim                ## entity expression dimension
@@ -133,6 +139,11 @@ class MemN2N(object):
         self.accuracy = dict()
         self.update_op_acc = dict()
 
+        ## Debugging variable
+        self.label = None
+        self.prediction = None
+        self.match = None
+
     def init_LE(self):
         option = 'random'
         option = 'fixed'
@@ -172,7 +183,7 @@ class MemN2N(object):
             iden = np.identity(size)
             first_row = np.zeros([1, size])
             ee_mat = np.concatenate((first_row, iden), 0)
-            return tf.Variable(initial_value=ee_mat, dtype=tf.float32)
+            return tf.Variable(initial_value=ee_mat, dtype=tf.float32, trainable=False)
 
     def activate_label(self, prob_tensor):
         bias_value = -0.5
@@ -180,24 +191,28 @@ class MemN2N(object):
         return tf.round(tf.sigmoid(tf.add(prob_tensor, bias)))
 
     def all_match(self, tensor1, tensor2):
-        return tf.reduce_sum(tf.cast(tf.not_equal(tensor1, tensor2), tf.float32), 1)
+        assert_shape(tensor1, (self.batch_size, self.edim))
+        assert_shape(tensor2, (self.batch_size, self.edim))
+
+        tensor_diff_boolean = tf.not_equal(tensor1, tensor2) ## cell will have 1 if not equal
+        assert_shape(tensor_diff_boolean, (self.batch_size, self.edim))
+        tensor_diff = tf.cast(tensor_diff_boolean, tf.float32)
+
+        wrong_array = tf.reduce_sum(tensor_diff, 1)  ## any 1 in the batch means fail
+        assert_shape(wrong_array, (self.batch_size,)) ## array of zero means perfect
+        return wrong_array
 
     def update_accuracy(self, m_result, real_m, name):
         labels = self.activate_label(real_m)
         prediction = self.activate_label(m_result)
         self.label = labels
         self.prediction = prediction
-        d = self.all_match(labels, prediction)
-        self.match = d
+        wrong_indicator = self.all_match(labels, prediction)
+        self.match = wrong_indicator
         zeros = tf.zeros([self.batch_size], dtype=tf.int32)
-        return tf.contrib.metrics.streaming_accuracy(d, zeros, name=name)
+        return tf.contrib.metrics.streaming_accuracy(wrong_indicator, zeros, name=name)
 
-
-
-    def build_model(self, run_names):
-        print("Building Model...", end="")
-        self.global_step = tf.Variable(0, name="global_step")
-
+    def init_embedding(self):
         self.SE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std))
         self.QE = tf.Variable(tf.random_normal([self.sdim * 2, 1], stddev=self.init_std))
 
@@ -210,31 +225,42 @@ class MemN2N(object):
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
-        self.W = tf.Variable(tf.constant([0.0, 0.0, 0.0], shape=[3, 1]), name="W")
+        self.W = tf.Variable(tf.constant(0.1, shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
 
-        self.loss = 0
+
+    def build_model(self, run_names):
+        print("Building Model...", end="")
+        self.global_step = tf.Variable(0, name="global_step")
+        self.init_embedding()
+
         m_result = self.memory_network(self.content, self.explicit_entity, self.target_idx)
-        real_m = tf.reshape(tf.reduce_sum(tf.nn.embedding_lookup(self.EM, self.real_entity), 1), m_result.shape)
+        real_m = tf.reshape(tf.reduce_sum(tf.nn.embedding_lookup(self.EM, self.real_entity), 1), (self.batch_size, self.edim))
         self.real_m = real_m
         self.m_result = m_result
-        self.loss += tf.losses.mean_squared_error(real_m, m_result)
+        self.loss = tf.losses.mean_squared_error(real_m, m_result)
 
+        ## train / valid / test / etc
         for name in run_names:
             self.accuracy[name], self.update_op_acc[name] = self.update_accuracy(m_result, real_m, name)
 
         self.lr = tf.Variable(self.current_lr)
-        if False:
+        if self.optimizer == 'Adagrad':
+            print("Using AdagradOptimizer")
             self.optim = tf.train.AdagradOptimizer(self.lr).minimize(self.loss)
+        elif self.optimizer == 'Adam':
+            print("Using AdamOptimizer")
+            self.optim = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
         else:
+            print("Using GradientDescent")
             self.opt = tf.train.GradientDescentOptimizer(self.lr)
             params = None
             if self.train_target == 1:
-                params = [self.SE, self.QE, self.QE_b]
-                print("Param : SE, QE")
+                params = [self.LE, self.DE, self.W]
+                print("Param : LE, DE, W")
             elif self.train_target == 2:
                 params = [self.LE, self.DE, self.SE, self.QE, self.W]
-                print("Param : LE, DE, W, SE, QE")
+                print("Param : LE, DE, SE, QE, W")
             elif self.train_target == 3:
                 params = [self.LE, self.DE, self.W, self.SE, self.QE, self.W4, self.b, self.SEE]
                 print("Param : [LE, DE], [W], [SE, QE], [b, SEE, W4]")
@@ -264,11 +290,14 @@ class MemN2N(object):
         ones = tf.ones_like(not_prob)
         return ones - not_prob
 
-    def memory_network(self, content, explicit_entity, target_idx):
+    def make_memory_empty(self):
         # Step 0
         self.memory_content = []
         self.memory_entity = []
         self.memory_location = []  # [context_len * batch]
+
+    def memory_network(self, content, explicit_entity, target_idx):
+        self.make_memory_empty()
 
         mi_ = tf.nn.embedding_lookup(self.EM, explicit_entity[:, 0])  ## [batch * edim]
         m0 = tf.reduce_sum(mi_, 1)
@@ -276,45 +305,49 @@ class MemN2N(object):
         self.memory_entity.append(m0)
         self.memory_location.append(tf.zeros([self.batch_size,], tf.int32))
         ## TODO : too many iteration...
-        for j in range(1, self.mem_size):
+        for context_len in range(1, self.mem_size):
             # 1) Select relevant article
 
-            # 1-1) Location
-            weights_1 = self.feature_location()
-            # 1-2) Distance
-            weights_2 = self.feature_distance(j)
-            # 1-3) Sentence - Sentence
-            weights_3 = self.feature_sentence_similarity(content, j)
-            # 1-4) Sentence - Entity
-            me = self.feature_sentence_entity(content, j)
+            # 1-1) Location -----------
+            weights_1 = tf.transpose(tf.nn.embedding_lookup(self.LE, self.memory_location), [1,0,2])  ## [batch * context_len * 1]
+
+
+            # 1-2) Distance ------------
+            dist = [context_len - x for x in self.memory_location]
+            weights_2 = tf.transpose(tf.nn.embedding_lookup(self.DE, dist), [1,0,2])  ## [batch * context_len * 1]
+
+            # 1-3) Sentence - Sentence --------
+            memory_text = tf.transpose(tf.nn.embedding_lookup(self.SE, self.memory_content), [1,0,2,3]) ## [batch * context_len * sent_len * sdim ]
+            memory_text_BoW = tf.reduce_sum(memory_text, 2)  ## [batch * context_len * sdim]
+
+            query_text = tf.nn.embedding_lookup(self.SE, content[:, context_len])  # [batch * sent_len * sdim]
+            query_text_BoW = tf.reduce_sum(query_text, 1)  ## [batch * sdim]
+            query_text_raw_tile = tf.reshape(tf.tile(query_text_BoW, [context_len, 1]), [context_len, self.batch_size, self.sdim])
+            query_text = tf.transpose(query_text_raw_tile, [1,0,2])
+            assert(query_text.shape == (self.batch_size,context_len, self.sdim) )
+
+            sent_feature = tf.concat([memory_text_BoW, query_text], 2)  # [ batch * context_len * (sdim*2)]
+            QE_tile = tf.reshape(tf.tile(self.QE, [self.batch_size, 1]), [self.batch_size, self.sdim * 2, 1])
+
+            weights_3 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len ]
+            assert_shape(weights_3, (self.batch_size, context_len, 1))
 
             # Weigt Sum
-            concat = tf.concat([weights_1, weights_2, weights_3], 2) # [batch * context_len * 2]
+            weight_concat = tf.concat([weights_1, weights_2, weights_3], 2) # [batch * context_len * 2]
+            assert_shape(weight_concat, (self.batch_size, context_len, 3))
             W_tile = tf.tile(self.W, [self.batch_size, 1])
-            W_ = tf.reshape(W_tile, [self.batch_size, 3, 1])  #[batch * 2 * 1]
+            W_tile = tf.reshape(W_tile, [self.batch_size, 3, 1])  #[batch * 2 * 1]
 
-            base_weights = tf.matmul(concat, W_)  # [batch * context_len * 1]
+            base_weights = tf.matmul(weight_concat, W_tile)  # [batch * context_len * 1]
 
             Cx = tf.transpose(tf.stack(self.memory_entity), [1, 2, 0])  ## [batch * edim * context_len]
             # 1-Final) Sum up
-            raw_weights = tf.scalar_mul(1./j, base_weights) # [batch * context_len * 1]
+            raw_weights = tf.scalar_mul(1./context_len, base_weights) # [batch * context_len * 1]
 
-            use_probability_sum = False
-            m = None
-            if False :
-                weight_tile = tf.tile(tf.reshape(raw_weights, [self.batch_size, j]), [self.edim, 1])
-                weights = tf.reshape(weight_tile, [self.edim, self.batch_size, j])
-                weights = tf.transpose(weights, [1,0,2])
-
-                CxW = tf.multiply(Cx, weights)
-                m = self.probability_and(CxW, 2)
-            else:
-                CxW = tf.matmul(Cx, raw_weights)
-                m = tf.reshape(CxW, [self.batch_size, self.edim])  ## [batch * edim * 1]
-
-
+            m = tf.reshape(tf.matmul(Cx, raw_weights), [self.batch_size, self.edim])  ## [batch * edim]
+            self.last_weight = raw_weights
             # 2) Updated sum of entity
-            mi_ = tf.nn.embedding_lookup(self.EM, explicit_entity[:, j])  ## [batch * max_entity * edim]
+            mi_ = tf.nn.embedding_lookup(self.EM, explicit_entity[:, context_len])  ## [batch * max_entity * edim]
             m0 = tf.reduce_sum(mi_, 1) # [batch * dim]
 
             mp = m0 + m
@@ -322,25 +355,18 @@ class MemN2N(object):
             mp = tf.minimum(mp, ones)
 
             # 3) Update
-            self.memory_content.append(content[:,j])
+            self.memory_content.append(content[:,context_len])
             self.memory_entity.append(mp)
-            self.memory_location.append(tf.constant(j, tf.int32, [self.batch_size,]))
+            self.memory_location.append(tf.constant(context_len, tf.int32, [self.batch_size,]))
 
-        def index(tensor):
-            nums = tf.reshape(tf.range(self.batch_size), [self.batch_size, 1])
-            data = tf.reshape(tensor, [self.batch_size, 1])
-            c = tf.concat([data, nums], 1)
-            return tf.reshape(c, shape=[self.batch_size,2])
-
-        # [context_len * batch * edim]
-        source = tf.transpose(self.memory_entity, [1,0,2])  # [batch * context * edim]
+        all_entity = tf.transpose(self.memory_entity, [1,0,2])  # [batch * context * edim]
 
         result = []
         for i in range(self.batch_size):
             idx = target_idx[i][0]
-            piece = source[i][idx]
+            entity_i = all_entity[i][idx]
             self.ex_e = explicit_entity[i][idx]
-            result.append(piece)
+            result.append(entity_i)
         m_result = tf.reshape(result, [self.batch_size, self.edim])
         return m_result
 
@@ -416,10 +442,10 @@ class MemN2N(object):
     def train(self, data):
         cost = 0
         n_test = len(data)
-        debug = True
+        debug = False
 
         batch_supplier = self.data2batch(data)
-        W = None
+        begin = True
         while batch_supplier.has_next():
             batch = batch_supplier.deque()
             feed_dict = {
@@ -431,21 +457,27 @@ class MemN2N(object):
             }
             (_, _,
              W, W4, LE, DE, m_result, real_m,
+             label, prediction, match, last_weight,
             loss) = self.sess.run([self.optim, self.update_op_acc["train"],
-                                   self.W_out, self.W4, self.LE, self.DE, self.m_result, self.real_m,
+                                   self.W, self.W4, self.LE, self.DE, self.m_result, self.real_m,
+                                   self.label, self.prediction, self.match, self.last_weight,
                                                self.loss], feed_dict)
-            if debug :
+            if begin :
+                begin = False
+                self.logger.print("labels", label)
+                self.logger.print("prediction", prediction)
+                self.logger.print("match", match)
                 self.logger.print("LE", LE)
                 self.logger.print("DE", DE)
                 self.logger.print("W", W)
-                self.logger.print("W4", W4)
                 self.logger.print("m_result", m_result)
                 self.logger.print("real_m", real_m)
+                self.logger.print("weight", last_weight)
             cost += np.sum(loss)
         accuracy = self.sess.run([self.accuracy["train"]])
         return cost/n_test, accuracy
 
-    def test(self, data, label):
+    def test(self, data):
         n_test = len(data)
         cost = 0
 
@@ -470,7 +502,7 @@ class MemN2N(object):
     def load_weights(self, sent_embedding = None):
 
         ## 1 load DE,LE
-        #self.saver.restore(self.sess, "checkpoint_dir\\MemN2N.model-7371")
+#        self.saver.restore(self.sess, "checkpoint_dir\\MemN2N.model-0")
 
         ## 2. Init SE, QE
         if sent_embedding is not None:
@@ -478,8 +510,8 @@ class MemN2N(object):
  #           self.sess.run(self.QE.assign(sent_embedding))
 
         ## 3. Load SEE, EE
-        saver2 = tf.train.Saver({"SEE": self.SEE, "EE": self.EE})
-        saver2.restore(self.sess, "model\\SEnEE.model")
+        #saver2 = tf.train.Saver({"SEE": self.SEE, "EE": self.EE})
+        #saver2.restore(self.sess, "model\\SEnEE.model")
 
     def demo(self, model_name, data):
         self.saver.restore(self.sess, "checkpoint_dir\\" + model_name)
@@ -573,7 +605,7 @@ class MemN2N(object):
             for idx in xrange(self.nepoch):
                 self.sess.run(tf.local_variables_initializer())
 
-                test_loss, test_acc = self.test(test_data, label='Validation')
+                test_loss, test_acc = self.test(test_data)
 
                 start = time.time()
                 train_loss, train_acc = self.train(train_data)

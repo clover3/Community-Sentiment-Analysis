@@ -164,8 +164,8 @@ def save_as_files(data, dirPath):
 
 def gen_simple_entity():
     s1 = get_all_entity("data\\EntityLabel.csv")
-    s2 = get_all_entity("data\\EntityLabelSet2.csv")
-    appeared_keyword = set(s1+s2)
+    s3 = get_all_entity("data\\EntityLabel3.csv")
+    appeared_keyword = set(s1+s3)
 
     lines = open("..\\input\\EntityDict.txt", encoding='UTF8').readlines()
 
@@ -181,26 +181,26 @@ def gen_simple_entity():
         for e in entity:
             if e in appeared_keyword:
                 return True
-            else:
-                print(e)
-
 
         return False
 
 
     important = filter(appear, all_entity)
 
+    new_group_num = 1
     f = open("data\\minEntityDict.txt", "w", encoding="UTF8")
     for (group_num, entity) in important:
-        f.write("\t".join([str(group_num)] + entity) + "\n")
+        f.write("\t".join([str(new_group_num)] + entity) + "\n")
+        new_group_num += 1
 
 
 
 if __name__ == '__main__':
-    r = generate_sentence_context("data\\EntityLabel.csv")
-    save_as_files(r, "data\\entity_test1")
+    if False:
+        r = generate_sentence_context("data\\EntityLabel.csv")
+        save_as_files(r, "data\\entity_test1")
 
-    r = generate_sentence_context("data\\EntityLabel3.csv")
-    save_as_files(r, "data\\entity_test3")
+        r = generate_sentence_context("data\\EntityLabel3.csv")
+        save_as_files(r, "data\\entity_test3")
 
-    #gen_simple_entity()
+    gen_simple_entity()

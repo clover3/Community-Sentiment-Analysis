@@ -129,9 +129,9 @@ def data_loader_tester():
         print("Target Entity : {}".format(test_case.real_entity))
 
 
-def convert_data2pickle(data_path, pickle_path):
+def convert_data2pickle(data_path, dict_path, pickle_path):
     print("convert_data2pickle({},{})".format(data_path, pickle_path))
-    dict_path = "..\\input\\EntityDict.txt"
+
     entity_dict = EntityDict(dict_path)
     idx2word = Idx2Word("data\\idx2word")
     data_set = DataSet(data_path, entity_dict, idx2word)
@@ -147,5 +147,6 @@ def gen_minimal():
 
 if __name__ == "__main__":
     #data_loader_tester()
-    #convert_data2pickle("data\\entity_test1", "data\\dataSet1.p")
-    convert_data2pickle("data\\entity_test3", "data\\dataSet3.p")
+
+    convert_data2pickle("data\\entity_test1", "data\\minEntityDict.txt", "data\\dataSet1_s.p")
+    convert_data2pickle("data\\entity_test3", "data\\minEntityDict.txt", "data\\dataSet3_s.p")

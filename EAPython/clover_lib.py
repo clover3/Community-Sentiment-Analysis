@@ -209,8 +209,10 @@ class ListProgress():
 
 
 def play_process_completed():
-    import playsound
-    playsound.playsound("C:\work\complete.mp3")
+    from pygame import mixer
+    mixer.init()
+    mixer.music.load("C:\work\complete.mp3")
+    mixer.music.play()
 
 
 

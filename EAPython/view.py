@@ -1,4 +1,4 @@
-
+import numpy as np
 
 root_dir = "debugs"
 
@@ -6,6 +6,7 @@ root_dir = "debugs"
 class Logger:
     def __init__(self):
         self.unit_dict = dict()
+        np.set_printoptions(precision=5, suppress=True)
 
     def print(self, name, obj):
         if name not in self.unit_dict:
