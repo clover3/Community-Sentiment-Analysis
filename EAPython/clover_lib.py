@@ -208,6 +208,12 @@ class ListProgress():
             print("-", end="")
 
 
+def play_process_completed():
+    import playsound
+    playsound.playsound("C:\work\complete.mp3")
+
+
+
 class Batch:
     def __init__(self, batch_size):
         self.data = []

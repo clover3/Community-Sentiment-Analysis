@@ -210,7 +210,7 @@ class MemN2N(object):
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
-        self.W = tf.Variable(tf.constant([0.0, 0.0, 0.1], shape=[3, 1]), name="W")
+        self.W = tf.Variable(tf.constant([0.0, 0.0, 0.0], shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
 
         self.loss = 0
@@ -300,7 +300,8 @@ class MemN2N(object):
             raw_weights = tf.scalar_mul(1./j, base_weights) # [batch * context_len * 1]
 
             use_probability_sum = False
-            if use_probability_sum :
+            m = None
+            if False :
                 weight_tile = tf.tile(tf.reshape(raw_weights, [self.batch_size, j]), [self.edim, 1])
                 weights = tf.reshape(weight_tile, [self.edim, self.batch_size, j])
                 weights = tf.transpose(weights, [1,0,2])
@@ -415,7 +416,7 @@ class MemN2N(object):
     def train(self, data):
         cost = 0
         n_test = len(data)
-        debug = False
+        debug = True
 
         batch_supplier = self.data2batch(data)
         W = None

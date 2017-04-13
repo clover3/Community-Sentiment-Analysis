@@ -5,6 +5,7 @@ import tensorflow as tf
 from idx2word import Idx2Word
 from model import MemN2N
 from model import load_vec
+from clover_lib import play_process_completed
 from eadata import TestCase  ## required for pickle
 
 flags = tf.app.flags
@@ -14,7 +15,7 @@ flags.DEFINE_integer("edim", 240, "entity embedding size")
 
 flags.DEFINE_integer("max_entity", 10, "maximal number of entity per sentence")
 flags.DEFINE_float("init_std", 0.05, "weight initialization std [0.05]")
-flags.DEFINE_integer("batch_size", 10, "batch size to use during training [128]")
+flags.DEFINE_integer("batch_size", 30, "batch size to use during training [128]")
 flags.DEFINE_integer("nepoch", 100, "number of epoch to use during training [100]")
 
 flags.DEFINE_integer("sdim", 100, "word embedding size")
@@ -23,7 +24,7 @@ flags.DEFINE_integer("sdim", 100, "word embedding size")
 flags.DEFINE_integer("sent_len", 101, "maximum number of token in sentence")
 flags.DEFINE_integer("mem_size", 50, "memory size [100]")
 
-flags.DEFINE_float("init_lr", 0.1, "initial learning rate [0.01]")
+flags.DEFINE_float("init_lr", 0.01, "initial learning rate [0.01]")
 
 flags.DEFINE_float("max_grad_norm", 50, "clip gradients to this norm [50]")
 flags.DEFINE_boolean("is_test", False, "True for testing, False for Training [False]")
@@ -56,3 +57,5 @@ if "__main__" == __name__ :
         else:
             model.load_weights(w2v)
             model.run(train_data, valid_data)
+
+    play_process_completed()
