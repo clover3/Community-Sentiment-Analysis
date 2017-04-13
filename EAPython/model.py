@@ -225,7 +225,7 @@ class MemN2N(object):
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
-        self.W = tf.Variable(tf.constant(0.1, shape=[3, 1]), name="W")
+        self.W = tf.Variable(tf.constant(0.3, shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
 
 
