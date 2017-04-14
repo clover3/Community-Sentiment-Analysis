@@ -5,6 +5,7 @@ import tensorflow as tf
 from idx2word import Idx2Word
 from model import MemN2N
 from model import load_vec
+from model import split_train_test, base_accuracy
 from clover_lib import play_process_completed
 from eadata import TestCase  ## required for pickle
 
@@ -50,8 +51,11 @@ if "__main__" == __name__ :
         train_data = pickle.load(open("data\\dataSet1.p","rb"))
         valid_data = pickle.load(open("data\\dataSet3.p", "rb"))
     else :
-        train_data = pickle.load(open("data\\dataSet1_s.p", "rb"))
-        valid_data = pickle.load(open("data\\dataSet3_s.p", "rb"))
+        data = pickle.load(open("data\\dataSet4_s.p", "rb"))
+        r = split_train_test(data, 3)
+        train_data, valid_data = r[0]
+        print("Base accuracy [Train] : " + str(base_accuracy(train_data)))
+        print("Base accuracy [Valid] : " + str(base_accuracy(valid_data)))
     print("Done")
 
     with tf.Session() as sess:

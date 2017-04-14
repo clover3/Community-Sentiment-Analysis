@@ -7,7 +7,10 @@ from entity_dict import EntityDict
 
 class TestCaseStr:
     def __init__(self, lines, entity_dict):
-        line_raw_entity = lines[0]
+        line_thread_id = lines[0]
+        thread_id = int(line_thread_id)
+
+        line_raw_entity = lines[1]
 
         def parse_entity(raw_entity):
             if raw_entity.strip() == "-":
@@ -15,8 +18,8 @@ class TestCaseStr:
             else:
                 return [item.strip() for item in raw_entity.split(",")]
 
-        target_len = int(lines[1])
-        target = "".join(lines[2: 2+target_len])
+        target_len = int(lines[2])
+        target = "".join(lines[3: 3+target_len])
 
         def parse_context(lines):
             if len(lines) == 0:
@@ -26,22 +29,23 @@ class TestCaseStr:
                 context = "".join(lines[1:1+context_len])
                 return [context] + parse_context(lines[1+context_len:])
 
-        context = parse_context(lines[2+target_len:])
+        context = parse_context(lines[3+target_len:])
 
+        self.thread_id = thread_id
         self.content = context + [target]
         self.explicit_entity = [entity_dict.extract_from(sent) for sent in self.content]
 
         # golden entity of last text
         self.real_entity = parse_entity(line_raw_entity)
 
-
         # both content and explicit_entity should have save length
         assert (len(self.content) == len(self.explicit_entity))
 
 
 class TestCase:
-    def __init__(self, content, explicit_entity, entity):
+    def __init__(self, thread_id, content, explicit_entity, entity):
         assert(len(content) == len(explicit_entity))
+        self.thread_id = thread_id
         self.content = content
         self.explicit_entity = explicit_entity
         self.real_entity = entity
@@ -51,6 +55,7 @@ class TestCase:
                 raise "Damn"
 
 from konlpy.tag import Twitter
+
 
 class DataSet:
     def __init__(self, data_path, entity_dict, word2idx):
@@ -82,6 +87,7 @@ class DataSet:
             if len(sentences) > max_depth:
                 max_depth = len(sentences)
             tokens_list = [tokenize(str) for str in sentences]
+
             def make_index(tokens):
                 return [word2idx.word2idx(token) for token in tokens]
             content = [make_index(tokens) for tokens in tokens_list]
@@ -92,13 +98,12 @@ class DataSet:
 
             explicit_entity = [entitys2index(e) for e in test_case_str.explicit_entity]
 
-
             entity_set = set(entitys2index(test_case_str.real_entity))
             entity_set.update(explicit_entity[-1])
             entity = list(entity_set)
 
             try:
-                self.test_cases.append(TestCase(content, explicit_entity, entity))
+                self.test_cases.append(TestCase(test_case_str.thread_id, content, explicit_entity, entity))
             except:
                 print("---------------")
                 print(sentences[-1])
@@ -106,6 +111,7 @@ class DataSet:
                 real = ",".join([entity_dict.get_name(e) for e in entity])
                 explicit = ",".join([entity_dict.get_name(e) for e in explicit_entity[-1]])
                 print("{} should have {}".format(real, explicit))
+                raise
 
 
 
@@ -140,6 +146,28 @@ def convert_data2pickle(data_path, dict_path, pickle_path):
     print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
 
 
+def convert_data_list_2pickle(data_path_list, dict_path, pickle_path):
+
+    entity_dict = EntityDict(dict_path)
+    idx2word = Idx2Word("data\\idx2word")
+
+    sets = [DataSet(path, entity_dict, idx2word) for path in data_path_list]
+    import pickle
+
+    cases = []
+    for data_set in sets:
+        cases += data_set.test_cases
+    all_thread = set([test_case.thread_id for test_case in cases])
+
+    total_case = len(cases)
+    num_thread = len(all_thread)
+    print("total case : {} , total thread : {}".format(total_case, num_thread))
+
+    import pickle
+    pickle.dump(cases, open(pickle_path, "wb"))
+    print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
+
+
 def gen_minimal():
     dict_path = "..\\input\\EntityDict.txt"
     entity_dict = EntityDict(dict_path)
@@ -148,5 +176,6 @@ def gen_minimal():
 if __name__ == "__main__":
     #data_loader_tester()
 
-    convert_data2pickle("data\\entity_test1", "data\\minEntityDict.txt", "data\\dataSet1_s.p")
-    convert_data2pickle("data\\entity_test3", "data\\minEntityDict.txt", "data\\dataSet3_s.p")
+    #convert_data2pickle("data\\entity_test1", "data\\minEntityDict.txt", "data\\dataSet1_s.p")
+    #convert_data2pickle("data\\entity_test3", "data\\minEntityDict.txt", "data\\dataSet3_s.p")
+    convert_data_list_2pickle(["data\\entity_test1", "data\\entity_test3"], "data\\minEntityDict.txt", "data\\dataSet4_s.p")

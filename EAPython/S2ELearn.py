@@ -167,7 +167,7 @@ class S2E():
             print(state)
             if train_acc[0] > 0.6 :
                 saver = tf.train.Saver({"SEE":self.SE, "EE":self.EE})
-                saver.save(self.sess, "model\\SEnEE.model")
+                saver.save(self.sess, "saved_model\\SEnEE.model")
                 break
 
             self.log_loss.append([train_loss, test_loss])

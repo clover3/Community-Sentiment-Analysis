@@ -31,8 +31,7 @@ def generate_sentence_context(label_data_path):
     def get_thread_article_id(post):
         return post[EL_IDX_THREAD_ID], post[EL_IDX_ARTICLE_ID]
 
-
-    ## this is inefficient
+    # this is inefficient
     def get_article(ta_id):
         (thread_id, article_id) = ta_id
         for s in sentences:
@@ -103,13 +102,13 @@ def generate_sentence_context(label_data_path):
 
         return context
 
-
     def generate_case(sentence):
+        thread_id = sentence[EL_IDX_THREAD_ID]
         entity = sentence[EL_IDX_LABEL]
         target = sentence[EL_IDX_CONTENT]
         context = context_for(sentence[EL_IDX_SENTENCE_ID])
 
-        return (entity, target, context)
+        return (thread_id, entity, target, context)
 
     return [generate_case(s) for s in sentences]
 
@@ -139,7 +138,8 @@ def save_as_files(data, dirPath):
             os.makedirs(dirPath)
 
         f = open(dirPath +"\\case{}.txt".format(index), "w")
-        (entity, target, context) = case
+        (thread_id, entity, target, context) = case
+        f.write(str(thread_id) + "\n")
         f.write(entity+"\n")
         f.write(str(num_lines(target))+"\n")
         f.write(target+"\n")
@@ -196,11 +196,11 @@ def gen_simple_entity():
 
 
 if __name__ == '__main__':
-    if False:
+    if True:
         r = generate_sentence_context("data\\EntityLabel.csv")
         save_as_files(r, "data\\entity_test1")
 
         r = generate_sentence_context("data\\EntityLabel3.csv")
         save_as_files(r, "data\\entity_test3")
-
-    gen_simple_entity()
+    else:
+        gen_simple_entity()

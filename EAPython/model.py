@@ -8,6 +8,49 @@ from view import Logger
 import time
 from clover_lib import *
 import pickle
+from itertools import groupby
+
+
+def split_train_test(all_data, n_fold=3):
+    def get_thread(test_case):
+        return test_case.thread_id
+
+    groups = []
+    for k, g in groupby(all_data, get_thread):
+        groups.append(list(g))
+    random.shuffle(groups)
+
+    folds = []
+    for i in range(n_fold):
+        folds.append([])
+
+    idx = 0
+    for group in groups:
+        folds[idx].append(group)
+        idx = (idx + 1) % n_fold
+
+    r = []
+    for test_idx in range(n_fold):
+        train = flatten(flatten(folds[0:test_idx] + folds[test_idx+1:]))
+        test  = flatten(folds[test_idx])
+        print("test_idx = {} train len = {} test len = {}".format(test_idx, len(train), len(test)))
+        r.append((train, test))
+
+    return r
+
+
+def base_accuracy(test_case):
+    counter = FailCounter()
+    for case in test_case:
+        what_i_see = set(case.explicit_entity[-1])
+        what_really_is = set(case.real_entity)
+
+        if what_i_see == what_really_is :
+            counter.suc()
+        else:
+            counter.fail()
+
+    return counter.precision()
 
 
 def print_shape(text, matrix):
@@ -217,6 +260,7 @@ class MemN2N(object):
         self.QE = tf.Variable(tf.random_normal([self.sdim * 2, 1], stddev=self.init_std))
 
         self.EM = self.init_EE(self.edim)
+
 
         self.LE = self.init_LE()
         self.DE = self.init_DE()
