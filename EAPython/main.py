@@ -52,21 +52,22 @@ if "__main__" == __name__ :
         valid_data = pickle.load(open("data\\dataSet3.p", "rb"))
     else :
         data = pickle.load(open("data\\dataSet4_s.p", "rb"))
-        r = split_train_test(data, 3)
-        train_data, valid_data = r[0]
-        print("Base accuracy [Train] : " + str(base_accuracy(train_data)))
-        print("Base accuracy [Valid] : " + str(base_accuracy(valid_data)))
+        runs = split_train_test(data, 3)
     print("Done")
 
-    with tf.Session() as sess:
-        model = MemN2N(flags.FLAGS, sess)
-        print("Next build model")
-        model.build_model(run_names=["train", "test"])
-        if flags.FLAGS.is_test:
-            print("Starting demo")
-            model.demo("MemN2N.model-648", valid_data)
-        else:
-            model.load_weights(w2v)
-            model.run(train_data, valid_data)
+    for (train_data, valid_data) in runs:
+        with tf.Session() as sess:
+            print("Base accuracy [Train] : " + str(base_accuracy(train_data)))
+            print("Base accuracy [Valid] : " + str(base_accuracy(valid_data)))
+            model = MemN2N(flags.FLAGS, sess)
+            print("Next build model")
+            model.build_model(run_names=["train", "test"])
+            if flags.FLAGS.is_test:
+                print("Starting demo")
+                model.demo("MemN2N.model-648", valid_data)
+            else:
+                model.load_weights(w2v)
+                model.run(train_data, valid_data)
+                model.print_report()
 
     play_process_completed()

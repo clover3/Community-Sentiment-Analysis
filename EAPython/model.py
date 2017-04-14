@@ -175,7 +175,7 @@ class MemN2N(object):
 
         self.sess = sess
         self.log_loss = []
-        self.log_perp = []
+        self.log = []
         self.last_weight = []
 
         self.logger = Logger()
@@ -269,7 +269,7 @@ class MemN2N(object):
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
-        self.W = tf.Variable(tf.constant(0.3, shape=[3, 1]), name="W")
+        self.W = tf.Variable(tf.constant(0.0, shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
 
 
@@ -659,7 +659,6 @@ class MemN2N(object):
                 # Logging
                 self.step, = self.sess.run([self.global_step])
                 self.log_loss.append([train_loss, test_loss])
-                #self.log_perp.append([math.exp(train_loss), math.exp(test_loss)])
 
                 state = {
                     'train_perplexity': train_loss,
@@ -671,6 +670,8 @@ class MemN2N(object):
                     'elapsed': int(elapsed)
                 }
                 print(state)
+                self.log.append(state)
+
                 # Learning rate annealing
                 if len(self.log_loss) > 1 and self.log_loss[idx][1] > self.log_loss[idx-1][1] * 0.9999:
                     self.current_lr = self.current_lr / 1.5
@@ -692,4 +693,15 @@ class MemN2N(object):
                 'test_perplexity': math.exp(test_loss)
             }
             print(state)
+
+    def print_report(self):
+        max_valid_accuracy = 0
+        best_state = None
+        for state in self.log:
+            if state['valid_accuracy'] > max_valid_accuracy:
+                max_valid_accuracy = state['valid_accuracy']
+                best_state = state
+
+        print("best performance(valid) {} yield at epoch {} , train_perplexity = {}".
+              format(max_valid_accuracy, best_state['epoch'], best_state["train_perplexity"]))
 
