@@ -4,6 +4,8 @@ from clover_lib import *
 from idx2word import Idx2Word
 from entity_dict import EntityDict
 
+import pickle
+from LDAnalyzer import LDAAnalyzer
 
 class TestCaseStr:
     def __init__(self, lines, entity_dict):
@@ -58,7 +60,7 @@ from konlpy.tag import Twitter
 
 
 class DataSet:
-    def __init__(self, data_path, entity_dict, word2idx):
+    def __init__(self, data_path, entity_dict, word2idx, token_vectorizer = None):
         print("Lodaing DataSet from {} ...".format(data_path), end='', flush=True)
         ## load data path folder
         twitter = Twitter()
@@ -90,7 +92,10 @@ class DataSet:
 
             def make_index(tokens):
                 return [word2idx.word2idx(token) for token in tokens]
-            content = [make_index(tokens) for tokens in tokens_list]
+            if token_vectorizer:
+                content = [token_vectorizer(tokens) for tokens in tokens_list]
+            else:
+                content = [make_index(tokens) for tokens in tokens_list]
 
             def entitys2index(entitys):
                 es = set([entity_dict.get_group(e) for e in entitys])
@@ -141,31 +146,31 @@ def convert_data2pickle(data_path, dict_path, pickle_path):
     entity_dict = EntityDict(dict_path)
     idx2word = Idx2Word("data\\idx2word")
     data_set = DataSet(data_path, entity_dict, idx2word)
-    import pickle
     pickle.dump(data_set.test_cases, open(pickle_path, "wb"))
     print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
 
 
-def convert_data_list_2pickle(data_path_list, dict_path, pickle_path):
+def convert_data_list_2pickle(data_path_list, dict_path, pickle_path, lda_vectorizer = None):
 
     entity_dict = EntityDict(dict_path)
     idx2word = Idx2Word("data\\idx2word")
 
-    sets = [DataSet(path, entity_dict, idx2word) for path in data_path_list]
-    import pickle
+    if lda_vectorizer:
+        sets = [DataSet(path, entity_dict, idx2word, lda_vectorizer) for path in data_path_list]
+    else:
+        sets = [DataSet(path, entity_dict, idx2word) for path in data_path_list]
 
     cases = []
     for data_set in sets:
         cases += data_set.test_cases
     all_thread = set([test_case.thread_id for test_case in cases])
+    pickle.dump(cases, open(pickle_path, "wb"))
 
     total_case = len(cases)
     num_thread = len(all_thread)
     print("total case : {} , total thread : {}".format(total_case, num_thread))
+ #   print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
 
-    import pickle
-    pickle.dump(cases, open(pickle_path, "wb"))
-    print("{}% words not found ".format(float(idx2word.not_found) / idx2word.trial))
 
 
 def gen_minimal():
@@ -173,9 +178,14 @@ def gen_minimal():
     entity_dict = EntityDict(dict_path)
 
 
+def get_lda_vectorizer():
+    lda = LDAAnalyzer()
+    return lda.get_topic_vector
+
+
 if __name__ == "__main__":
     #data_loader_tester()
 
     #convert_data2pickle("data\\entity_test1", "data\\minEntityDict.txt", "data\\dataSet1_s.p")
     #convert_data2pickle("data\\entity_test3", "data\\minEntityDict.txt", "data\\dataSet3_s.p")
-    convert_data_list_2pickle(["data\\entity_test1", "data\\entity_test3"], "data\\minEntityDict.txt", "data\\dataSet4_s.p")
+    convert_data_list_2pickle(["data\\entity_test1", "data\\entity_test3"], "data\\minEntityDict.txt", "data\\dataSet_lda_s.p", get_lda_vectorizer())

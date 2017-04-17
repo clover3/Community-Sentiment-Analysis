@@ -25,7 +25,7 @@ flags.DEFINE_integer("sdim", 100, "word embedding size")
 flags.DEFINE_integer("sent_len", 101, "maximum number of token in sentence")
 flags.DEFINE_integer("mem_size", 20, "memory size [100]")
 
-flags.DEFINE_float("init_lr", 0.01, "initial learning rate [0.01]")
+flags.DEFINE_float("init_lr", 0.001, "initial learning rate [0.01]")
 
 flags.DEFINE_float("max_grad_norm", 50, "clip gradients to this norm [50]")
 flags.DEFINE_boolean("is_test", False, "True for testing, False for Training [False]")
@@ -33,15 +33,17 @@ flags.DEFINE_boolean("show", True, "print progress [False]")
 
 flags.DEFINE_string("checkpoint_dir", "checkpoint_dir", "checkpoint_dir")
 flags.DEFINE_string("data_name", "small", "data set name [ptb]")
-flags.DEFINE_string("optimizer", "Gradient", "data set name [ptb]")
+flags.DEFINE_string("optimizer", "Adam", "data set name [ptb]")
 
 flags.DEFINE_integer("train_target", 2, "1 : {LE, DE, W}   2 : {All} ,  3: Temp")
 flags.DEFINE_integer("use_small_entity", True, "")
+flags.DEFINE_integer("lda_mode", True)
 
 import pickle
-
+import random
 
 if "__main__" == __name__ :
+    random.seed(10)
     idx2word = Idx2Word("data\\idx2word")
     w2v = load_vec("data\\korean_word2vec_wv_100.txt", idx2word, False)
     flags.DEFINE_integer("nwords", idx2word.voca_size, "number of words in corpus")
@@ -50,6 +52,9 @@ if "__main__" == __name__ :
     if not flags.FLAGS.use_small_entity : # full entity
         train_data = pickle.load(open("data\\dataSet1.p","rb"))
         valid_data = pickle.load(open("data\\dataSet3.p", "rb"))
+    elif flags.FLAGS.lda_mode :
+        data = pickle.load(open("data\\dataSet_lda_s.p", "rb"))
+        runs = split_train_test(data, 3)
     else :
         data = pickle.load(open("data\\dataSet4_s.p", "rb"))
         runs = split_train_test(data, 3)

@@ -74,8 +74,8 @@ def load_vec(file_name, idx2word, binary = True):
     """
     print("Loading word2vec...")
     w2v_cache = "cache\\w2v"
-    if os.path.isfile(w2v_cache):
-        return pickle.load(open(w2v_cache,"rb"))
+    #if os.path.isfile(w2v_cache):
+    #    return pickle.load(open(w2v_cache,"rb"))
     vocab = idx2word.get_voca()
 
     mode = ("rb" if binary else "r")
@@ -107,13 +107,19 @@ def load_vec(file_name, idx2word, binary = True):
             else:
                 getline()
 
+    counter = FailCounter()
     l = []
     for i in range(idx2word.voca_size):
         if i in word_vecs:
             l.append(word_vecs[i])
+            counter.suc()
+        elif i == 0:
+            l.append(np.full(ndim, 0.0))
         else:
+            counter.fail()
             l.append(np.random.uniform(-0.25, 0.25, ndim))
 
+    print("{} of the words not found".format(1-counter.precision()))
     r = np.ndarray(shape=[idx2word.voca_size, ndim], buffer= np.array(l))
     print("Loaded word2vec...")
     pickle.dump(r, open(w2v_cache, "wb"))
@@ -261,7 +267,6 @@ class MemN2N(object):
 
         self.EM = self.init_EE(self.edim)
 
-
         self.LE = self.init_LE()
         self.DE = self.init_DE()
 
@@ -269,7 +274,7 @@ class MemN2N(object):
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
-        self.W = tf.Variable(tf.constant(0.0, shape=[3, 1]), name="W")
+        self.W = tf.Variable(tf.constant(0.00, shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
 
 
@@ -303,7 +308,7 @@ class MemN2N(object):
                 params = [self.LE, self.DE, self.W]
                 print("Param : LE, DE, W")
             elif self.train_target == 2:
-                params = [self.LE, self.DE, self.SE, self.QE, self.W]
+                params = [self.LE, self.DE, self.SE, self.W]
                 print("Param : LE, DE, SE, QE, W")
             elif self.train_target == 3:
                 params = [self.LE, self.DE, self.W, self.SE, self.QE, self.W4, self.b, self.SEE]
@@ -369,11 +374,16 @@ class MemN2N(object):
             query_text_raw_tile = tf.reshape(tf.tile(query_text_BoW, [context_len, 1]), [context_len, self.batch_size, self.sdim])
             query_text = tf.transpose(query_text_raw_tile, [1,0,2])
             assert(query_text.shape == (self.batch_size,context_len, self.sdim) )
+            qt_T = tf.reshape(query_text, [self.batch_size, context_len, 1, self.sdim])
+            mt = tf.reshape(memory_text_BoW, [self.batch_size, context_len, self.sdim, 1])
+            cossim = tf.matmul(qt_T, mt)
+            assert(cossim.shape == (self.batch_size, context_len, 1, 1))
+            weights_3 = tf.reshape(cossim, [self.batch_size, context_len, 1])
 
             sent_feature = tf.concat([memory_text_BoW, query_text], 2)  # [ batch * context_len * (sdim*2)]
             QE_tile = tf.reshape(tf.tile(self.QE, [self.batch_size, 1]), [self.batch_size, self.sdim * 2, 1])
 
-            weights_3 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len ]
+            #weights_3 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len ]
             assert_shape(weights_3, (self.batch_size, context_len, 1))
 
             # Weigt Sum
@@ -489,7 +499,8 @@ class MemN2N(object):
         debug = False
 
         batch_supplier = self.data2batch(data)
-        begin = True
+        debug = True
+        count = 0
         while batch_supplier.has_next():
             batch = batch_supplier.deque()
             feed_dict = {
@@ -506,8 +517,7 @@ class MemN2N(object):
                                    self.W, self.W4, self.LE, self.DE, self.m_result, self.real_m,
                                    self.label, self.prediction, self.match, self.last_weight,
                                                self.loss], feed_dict)
-            if begin :
-                begin = False
+            if debug :
                 self.logger.print("labels", label)
                 self.logger.print("prediction", prediction)
                 self.logger.print("match", match)
@@ -642,7 +652,6 @@ class MemN2N(object):
           "over esitmate": over_estimate,
           "under-estimate": under_estimate})
 
-
     def run(self, train_data, test_data):
         if not self.is_test:
             train_acc_last = 0
@@ -664,9 +673,9 @@ class MemN2N(object):
                     'train_perplexity': train_loss,
                     'epoch': idx,
                     'learning_rate': self.current_lr,
-                    'train_accuracy': train_acc,
+                    'train_accuracy': train_acc[0],
                     'acc_delta' : acc_delta,
-                    'valid_accuracy': test_acc,
+                    'valid_accuracy': test_acc[0],
                     'elapsed': int(elapsed)
                 }
                 print(state)
