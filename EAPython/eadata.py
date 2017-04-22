@@ -188,4 +188,4 @@ if __name__ == "__main__":
 
     #convert_data2pickle("data\\entity_test1", "data\\minEntityDict.txt", "data\\dataSet1_s.p")
     #convert_data2pickle("data\\entity_test3", "data\\minEntityDict.txt", "data\\dataSet3_s.p")
-    convert_data_list_2pickle(["data\\entity_test1", "data\\entity_test3"], "data\\minEntityDict.txt", "data\\dataSet_lda_s.p", get_lda_vectorizer())
+    convert_data_list_2pickle(["data\\entity_test1", "data\\entity_test3"], "data\\minEntityDict.txt", "data\\dataSet_lda_2.p", get_lda_vectorizer())

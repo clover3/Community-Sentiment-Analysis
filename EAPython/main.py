@@ -3,7 +3,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
 from idx2word import Idx2Word
-from model import MemN2N
+from model import MemN2N, MemN2N_LDA, MemN2N_LSTM
 from model import load_vec
 from model import split_train_test, base_accuracy
 from clover_lib import play_process_completed
@@ -37,7 +37,7 @@ flags.DEFINE_string("optimizer", "Adam", "data set name [ptb]")
 
 flags.DEFINE_integer("train_target", 2, "1 : {LE, DE, W}   2 : {All} ,  3: Temp")
 flags.DEFINE_integer("use_small_entity", True, "")
-flags.DEFINE_integer("lda_mode", True)
+flags.DEFINE_boolean("s_rep", "LSTM", "BoW, LDA, LSTM")
 
 import pickle
 import random
@@ -52,7 +52,7 @@ if "__main__" == __name__ :
     if not flags.FLAGS.use_small_entity : # full entity
         train_data = pickle.load(open("data\\dataSet1.p","rb"))
         valid_data = pickle.load(open("data\\dataSet3.p", "rb"))
-    elif flags.FLAGS.lda_mode :
+    elif flags.FLAGS.s_rep == "LDA" :
         data = pickle.load(open("data\\dataSet_lda_s.p", "rb"))
         runs = split_train_test(data, 3)
     else :
@@ -64,7 +64,12 @@ if "__main__" == __name__ :
         with tf.Session() as sess:
             print("Base accuracy [Train] : " + str(base_accuracy(train_data)))
             print("Base accuracy [Valid] : " + str(base_accuracy(valid_data)))
-            model = MemN2N(flags.FLAGS, sess)
+            if flags.FLAGS.s_rep == "LDA" :
+                model = MemN2N_LDA(flags.FLAGS, sess)
+            elif flags.FLAGS.s_rep == "LSTM":
+                model = MemN2N_LSTM(flags.FLAGS, sess)
+            else:
+                model = MemN2N(flags.FLAGS, sess)
             print("Next build model")
             model.build_model(run_names=["train", "test"])
             if flags.FLAGS.is_test:

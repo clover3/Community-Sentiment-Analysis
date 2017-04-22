@@ -194,13 +194,37 @@ def gen_simple_entity():
         new_group_num += 1
 
 
+def entity_find_acc(label_data_path):
+    def load_entity_label(path):
+        return load_csv_euc_kr(path)
+
+    EL_IDX_SENTENCE_ID = 0
+    EL_IDX_ARTICLE_ID  = 1
+    EL_IDX_THREAD_ID   = 2
+    EL_IDX_CONTENT     = 3
+    EL_IDX_LABEL       = 4
+    EL_IDX_AUTHOR      = 5
+    from entity_dict import EntityDict
+    entity_dict = EntityDict("..\\input\\EntityDict.txt", False)
+    sentences = load_entity_label(label_data_path)
+
+    all_entity = []
+    for s in sentences:
+        content = s[EL_IDX_CONTENT]
+        es = [entity_dict.get_group(e) for e in entity_dict.extract_from(content)]
+        es = list(set(es))
+
+        all_entity.append(es)
+    print(all_entity)
+
 
 if __name__ == '__main__':
-    if True:
+    if False:
         r = generate_sentence_context("data\\EntityLabel.csv")
         save_as_files(r, "data\\entity_test1")
 
         r = generate_sentence_context("data\\EntityLabel3.csv")
         save_as_files(r, "data\\entity_test3")
     else:
-        gen_simple_entity()
+        entity_find_acc("data\\EntityLabel3.csv")
+        #gen_simple_entity()

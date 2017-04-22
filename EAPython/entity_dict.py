@@ -4,13 +4,17 @@ Nothing = ""
 
 
 class EntityDict:
-    def __init__(self, dict_path):
+    def __init__(self, dict_path, light = False):
         lines = open(dict_path, encoding='UTF8').readlines()
 
         def parse_line(line):
             token = line.strip().split("\t")
             group_num = int(token[0].strip())
-            raw_entitys = token[1: ]
+
+            if not light:
+                raw_entitys = token[1: ]
+            else:
+                raw_entitys = token[1:2]
             non_empty_entity = filter(lambda x: len(x) > 0, raw_entitys)
             pairs = [(entity.lower(), group_num) for entity in non_empty_entity]
             return pairs
