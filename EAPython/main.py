@@ -3,7 +3,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
 from idx2word import Idx2Word
-from model import MemN2N, MemN2N_LDA, MemN2N_LSTM
+from model import MemN2N, MemN2N_LDA, MemN2N_LSTM, EntityInherit
 from model import load_vec
 from model import split_train_test, base_accuracy
 from clover_lib import play_process_completed
@@ -37,13 +37,13 @@ flags.DEFINE_string("optimizer", "Adam", "data set name [ptb]")
 
 flags.DEFINE_integer("train_target", 2, "1 : {LE, DE, W}   2 : {All} ,  3: Temp")
 flags.DEFINE_integer("use_small_entity", True, "")
-flags.DEFINE_boolean("s_rep", "LSTM", "BoW, LDA, LSTM")
+flags.DEFINE_string("model_type", "INHERIT", "BoW, LDA, LSTM, INHERIT")
 
 import pickle
 import random
 
 if "__main__" == __name__ :
-    random.seed(10)
+    random.seed(0)
     idx2word = Idx2Word("data\\idx2word")
     w2v = load_vec("data\\korean_word2vec_wv_100.txt", idx2word, False)
     flags.DEFINE_integer("nwords", idx2word.voca_size, "number of words in corpus")
@@ -52,7 +52,7 @@ if "__main__" == __name__ :
     if not flags.FLAGS.use_small_entity : # full entity
         train_data = pickle.load(open("data\\dataSet1.p","rb"))
         valid_data = pickle.load(open("data\\dataSet3.p", "rb"))
-    elif flags.FLAGS.s_rep == "LDA" :
+    elif flags.FLAGS.model_type == "LDA" :
         data = pickle.load(open("data\\dataSet_lda_s.p", "rb"))
         runs = split_train_test(data, 3)
     else :
@@ -60,16 +60,25 @@ if "__main__" == __name__ :
         runs = split_train_test(data, 3)
     print("Done")
 
+    summary = []
     for (train_data, valid_data) in runs:
         with tf.Session() as sess:
             print("Base accuracy [Train] : " + str(base_accuracy(train_data)))
-            print("Base accuracy [Valid] : " + str(base_accuracy(valid_data)))
-            if flags.FLAGS.s_rep == "LDA" :
+            base_valid = base_accuracy(valid_data)
+            print("Base accuracy [Valid] : " + str(base_valid))
+
+            if flags.FLAGS.model_type == "LDA" :
                 model = MemN2N_LDA(flags.FLAGS, sess)
-            elif flags.FLAGS.s_rep == "LSTM":
+            elif flags.FLAGS.model_type == "LSTM":
+                print("Using LSTM")
                 model = MemN2N_LSTM(flags.FLAGS, sess)
+            elif flags.FLAGS.model_type == "INHERIT":
+                print("Using INHERIT")
+                model = EntityInherit(flags.FLAGS, sess)
             else:
+                print("Using default")
                 model = MemN2N(flags.FLAGS, sess)
+
             print("Next build model")
             model.build_model(run_names=["train", "test"])
             if flags.FLAGS.is_test:
@@ -78,6 +87,11 @@ if "__main__" == __name__ :
             else:
                 model.load_weights(w2v)
                 model.run(train_data, valid_data)
-                model.print_report()
+                model.print_report(base_valid)
+                best = model.get_best_valid()['valid_accuracy']
+                summary.append("{}\t{}".format(base_valid, best))
+
+    for s in summary:
+        print(s)
 
     play_process_completed()

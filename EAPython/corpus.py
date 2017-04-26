@@ -1,9 +1,10 @@
 # -*- coding: euc-kr -*-
+
 from types import *
 from clover_lib import *
 import pickle
 import os
-
+import nltk
 
 def generate_sentence_context(label_data_path):
     # list of [sentenceID, articleID, threadID, content, author ]
@@ -193,7 +194,7 @@ def gen_simple_entity():
         f.write("\t".join([str(new_group_num)] + entity) + "\n")
         new_group_num += 1
 
-
+# Check how large portion of entity can be found with simple dictionary
 def entity_find_acc(label_data_path):
     def load_entity_label(path):
         return load_csv_euc_kr(path)
@@ -218,8 +219,59 @@ def entity_find_acc(label_data_path):
     print(all_entity)
 
 
-if __name__ == '__main__':
+def load_reddit():
     if False:
+        data = load_csv_utf("..\\input\\reddit_cars.csv")[1:100000]
+        pickle.dump(data, open("corpus.temp", "wb"))
+        return data
+    else:
+        data = pickle.load(open("corpus.temp","rb"))
+        return data
+
+def reddit_sentence_cutter():
+    data = load_reddit()[:100]
+
+    IDX_TITLE = 1
+    IDX_CONTENT = 2
+    IDX_AUTHOR_ID = 3
+    IDX_TAG = 4
+    IDX_ARTICLE_ID = 5
+    IDX_THREAD_ID = 6
+    result = []
+    print(data[0])
+    sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
+
+    for article in data:
+        def append(sentence):
+            entry = (sentence, article[IDX_AUTHOR_ID], article[IDX_TAG], article[IDX_ARTICLE_ID],
+                     article[IDX_THREAD_ID])
+            result.append(entry)
+
+        if article[IDX_TITLE] :
+            append(article[IDX_TITLE])
+        text = article[IDX_CONTENT]
+        sentences = sent_detector.tokenize(text.strip())
+        for sentence in sentences:
+            append(sentence)
+
+    def encode(data):
+        res = []
+        for entry in data:
+            res.append(([item.encode('utf-8') for item in entry]))
+        return res
+
+    res_byte = encode(result)
+    print(res_byte[1])
+    save_csv_utf(result, "EntityLabel_En.csv")
+
+
+
+
+
+if __name__ == '__main__':
+    if True:
+        reddit_sentence_cutter()
+    elif False:
         r = generate_sentence_context("data\\EntityLabel.csv")
         save_as_files(r, "data\\entity_test1")
 
