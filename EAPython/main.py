@@ -4,7 +4,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from idx2word import Idx2Word
 from model import MemN2N, MemN2N_LDA, MemN2N_LSTM, EntityInherit
-from model import load_vec
+from m1 import M1
+from easolver import load_vec
 from model import split_train_test, base_accuracy
 from clover_lib import play_process_completed
 from eadata import TestCase  ## required for pickle
@@ -23,7 +24,7 @@ flags.DEFINE_integer("sdim", 100, "word embedding size")
 
 
 flags.DEFINE_integer("sent_len", 101, "maximum number of token in sentence")
-flags.DEFINE_integer("mem_size", 20, "memory size [100]")
+flags.DEFINE_integer("max_sent", 20, "memory size [20]")
 
 flags.DEFINE_float("init_lr", 0.001, "initial learning rate [0.01]")
 
@@ -37,7 +38,7 @@ flags.DEFINE_string("optimizer", "Adam", "data set name [ptb]")
 
 flags.DEFINE_integer("train_target", 2, "1 : {LE, DE, W}   2 : {All} ,  3: Temp")
 flags.DEFINE_integer("use_small_entity", True, "")
-flags.DEFINE_string("model_type", "INHERIT", "BoW, LDA, LSTM, INHERIT")
+flags.DEFINE_string("model_type", "BoW", "BoW, LDA, LSTM, INHERIT, M1")
 
 import pickle
 import random
@@ -75,8 +76,11 @@ if "__main__" == __name__ :
             elif flags.FLAGS.model_type == "INHERIT":
                 print("Using INHERIT")
                 model = EntityInherit(flags.FLAGS, sess)
+            elif flags.FLAGS.model_type == "M1":
+                print("Using M1")
+                model = M1(flags.FLAGS, sess)
             else:
-                print("Using default")
+                print("Using MemN2N")
                 model = MemN2N(flags.FLAGS, sess)
 
             print("Next build model")
