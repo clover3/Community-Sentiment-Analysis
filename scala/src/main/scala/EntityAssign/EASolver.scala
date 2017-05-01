@@ -277,8 +277,8 @@ class EAContextCascade(entityDict: EntityDict) extends EASolver {
   }
 }
 
-class MESolver(entityDict: EntityDict, trainData : List[EACase], affinity: Affinity) extends EASolver {
-  val classifier = new EAClassifier(entityDict, affinity)
+class MESolver(entityDict: EntityDict, trainData : List[EACase]) extends EASolver {
+  val classifier = new EAClassifier(entityDict)
   val trained : MaxEnt = classifier.train(trainData)
   override def solve(testCase: EACase): List[String] = {
     classifier.predict(trained, testCase)

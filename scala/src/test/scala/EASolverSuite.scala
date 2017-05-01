@@ -46,8 +46,7 @@ class EASolverSuite extends FunSuite {
   test("Compare Accuracy") {
     val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
     val path = "..\\input\\CarAffinity.txt"
-    val affinity = new Affinity(path, dict)
-    val eval = new EAEval("..\\input\\entity_test", dict)
+    val eval = new EAEval("..\\input\\entity_test1", dict)
 
     val solverTarget = new TargetOnly(dict)
     val accuracyTarget = eval.evalPerformance(solverTarget)
@@ -68,12 +67,12 @@ class EASolverSuite extends FunSuite {
     val solverContext = new EntityContext(dict)
     val accuracyContext = eval.evalPerformance(solverContext)
     println(s"Accuracy[Context]   : $accuracyContext")
+//
+//    val solverContextC = new EAContextCascade(dict)
+//    val accuracyContextC = eval.evalPerformance(solverContextC)
+//    println(s"Accuracy[ContextC]   : $accuracyContextC")
 
-    val solverContextC = new EAContextCascade(dict)
-    val accuracyContextC = eval.evalPerformance(solverContextC)
-    println(s"Accuracy[ContextC]   : $accuracyContextC")
-
-    val mesolver = new MESolver(dict, eval.testCases, affinity)
+    val mesolver = new MESolver(dict, eval.testCases)
     val accuracyStruct = eval.evalPerformance(mesolver)
     println(s"Accuracy[ME]   : $accuracyStruct")
 

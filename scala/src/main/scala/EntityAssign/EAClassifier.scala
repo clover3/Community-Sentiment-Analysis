@@ -6,7 +6,7 @@ import scala.collection.JavaConversions._
 /**
   * Created by user on 2017-03-07.
   */
-class EAClassifier(dict: EntityDict, affinity: Affinity) {
+class EAClassifier(dict: EntityDict) {
   val LABEL_TRUE = 1
   val LABEL_FALSE = 2
   val tool = new EATool(dict)
@@ -55,19 +55,14 @@ class EAClassifier(dict: EntityDict, affinity: Affinity) {
     toInt(fHas)
   }
 
-  def featureAffinity(testcase: EACase, entity : String) : Int = {
-    val sentenceTokens = tokenize(testcase.targetSent).toList
-    (affinity.top3Affinity(dict.getGroup(entity), sentenceTokens) * 10).toInt
-  }
 
   def feature(testCase:EACase, entity: String) : Array[Int] = {
     Array(
-      //featureDistPrevSentence(testCase), // #4
-      //featureConsistWithPrev(testCase, entity), // #6
-      //featureIsFirstMentioned(testCase, entity), // #8
-      //featureMostFrequent(testCase, entity), // #9
-      featureCurrent(testCase,entity),
-      featureAffinity(testCase, entity)
+      featureDistPrevSentence(testCase), // #4
+      featureConsistWithPrev(testCase, entity), // #6
+      featureIsFirstMentioned(testCase, entity), // #8
+      featureMostFrequent(testCase, entity), // #9
+      featureCurrent(testCase,entity)
     )
   }
   def conver2test(testcase: EACase, entity : String) : Instance = {

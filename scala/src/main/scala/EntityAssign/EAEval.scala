@@ -140,7 +140,8 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
   def loadCase(file: File): EACase = {
     try {
       val lines: Array[String] = readEuckr(file).toArray
-      val rawEntity = lines(0)
+      val rawThread = lines(0)
+      val rawEntity = lines(1)
       val entitys:Iterable[String] = {
         if(rawEntity== "-")
           Nil
@@ -148,10 +149,10 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
           rawEntity.split(",") map (_.trim)
       }
 
-      val strTargetLen = lines(1).toInt
-      val strTarget = lines.slice(2, 2 + strTargetLen).mkString("\n")
+      val strTargetLen = lines(2).toInt
+      val strTarget = lines.slice(3, 3 + strTargetLen).mkString("\n")
 
-      val contexts: List[String] = parseContextSentences(lines.slice(2 + strTargetLen, lines.length))
+      val contexts: List[String] = parseContextSentences(lines.slice(3 + strTargetLen, lines.length))
       new EACase(entitys, strTarget, contexts)
     }catch {
       case e: NumberFormatException => {
