@@ -92,8 +92,9 @@ if "__main__" == __name__ :
                 model.load_weights(w2v)
                 model.run(train_data, valid_data)
                 model.print_report(base_valid)
-                best = model.get_best_valid()['valid_accuracy']
-                summary.append("{}\t{}".format(base_valid, best))
+                best_accuracy = model.get_best_valid('valid_accuracy')
+                best_f = model.get_best_valid('valid_f')
+                summary.append("{}\t{}\t{}".format(base_valid, best_accuracy, best_f))
 
     for s in summary:
         print(s)

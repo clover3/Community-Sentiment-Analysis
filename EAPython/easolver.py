@@ -103,6 +103,10 @@ class EASolver(object):
         self.logger = Logger()
         self.accuracy = dict()
         self.update_op_acc = dict()
+        self.precision = dict()
+        self.precision_op = dict()
+        self.recall = dict()
+        self.recall_op = dict()
         self.print_state = config.show
 
         self.global_step = None
@@ -147,6 +151,36 @@ class EASolver(object):
         zeros = tf.zeros([self.batch_size], dtype=tf.int32)
         return tf.contrib.metrics.streaming_accuracy(wrong_indicator, zeros, name=name)
 
+
+    def update_recall_precision(self, hidden_truth, hidden_prediction, name):
+        labels = activate_label(hidden_truth)
+        prediction = activate_label(hidden_prediction)
+        precision, precision_update = tf.contrib.metrics.streaming_precision(prediction, labels, name=name)
+        recall, recall_update = tf.contrib.metrics.streaming_recall(prediction, labels, name=name)
+        return precision, precision_update, recall, recall_update
+
+
+    def get_explicit_entity_at_target(self):
+        explicit = []
+        for i in range(self.batch_size):
+            idx = self.target_idx[i][0]
+            entity_i = self.explicit_entity[i][idx]
+            explicit.append(entity_i)
+        mi_ = tf.nn.embedding_lookup(self.EM, explicit)  ## [batch * max_entity * edim]
+        m0 = tf.reduce_sum(mi_, 1)  # [batch * dim]
+        return m0
+
+    def hidden_prediction(self, predict_all):
+        explicit = self.get_explicit_entity_at_target()
+        return predict_all - explicit
+
+    def hidden_truth(self):
+        explicit = self.get_explicit_entity_at_target()
+        real_all = tf.reshape(tf.reduce_sum(tf.nn.embedding_lookup(self.EM, self.real_entity), 1),
+                            (self.batch_size, self.edim))
+        return real_all - explicit
+
+
     def build_model(self, run_names):
         print("[EASolver]Building Model...", end="")
         self.global_step = tf.Variable(0, name="global_step")
@@ -161,6 +195,8 @@ class EASolver(object):
         ## train / valid / test / etc
         for name in run_names:
             self.accuracy[name], self.update_op_acc[name] = self.update_accuracy(m_result, real_m, name)
+            (self.precision[name], self.precision_op[name], self.recall[name], self.recall_op[name])\
+                = self.update_recall_precision(self.hidden_truth(), self.hidden_prediction(m_result), name)
 
         inc = self.global_step.assign_add(1)
         self.lr = tf.Variable(self.current_lr)
@@ -346,9 +382,9 @@ class EASolver(object):
                 self.target_idx: batch[3],
                 self.candidate_entity: batch[4]
             }
-            (_, _,
+            (_, _, _, _,
              W, m_result, real_m, QE,
-            loss) = self.sess.run([self.optim, self.update_op_acc["train"],
+            loss) = self.sess.run([self.optim, self.update_op_acc["train"], self.recall_op["train"], self.precision_op["train"],
                                    self.W, self.m_result, self.real_m, self.QE,
                                                self.loss], feed_dict)
             if debug :
@@ -357,8 +393,11 @@ class EASolver(object):
                 self.logger.print("m_result", m_result)
                 self.logger.print("real_m", real_m)
             cost += np.sum(loss)
-        accuracy = self.sess.run([self.accuracy["train"]])
-        return cost/n_test, accuracy
+        accuracy, precision, recall = self.sess.run(
+            [self.accuracy["train"],
+             self.precision["train"],
+             self.recall["train"]])
+        return cost/n_test, accuracy, precision, recall
 
     def test(self, data):
         n_test = len(data)
@@ -375,12 +414,15 @@ class EASolver(object):
                 self.target_idx: batch[3],
                 self.candidate_entity: batch[4]
             }
-            (loss, _,
-             ) = self.sess.run([self.loss, self.update_op_acc["test"],
+            (loss, _, _, _,
+             ) = self.sess.run([self.loss, self.update_op_acc["test"], self.precision_op["test"], self.recall_op["test"]
                                        ], feed_dict)
             cost += np.sum(loss)
-        accuracy = self.sess.run([self.accuracy["test"]])
-        return cost/n_test, accuracy
+        accuracy, precision, recall = self.sess.run(
+            [self.accuracy["test"],
+             self.precision["test"],
+             self.recall["test"]])
+        return cost/n_test, accuracy, precision, recall
 
     def run(self, train_data, test_data):
         if not self.is_test:
@@ -389,13 +431,14 @@ class EASolver(object):
             for idx in range(self.nepoch):
                 self.sess.run(tf.local_variables_initializer())
 
-                test_loss, test_acc = self.test(test_data)
+                test_loss, test_acc, test_precision, test_recall = self.test(test_data)
+                test_f  = 2*test_precision*test_recall/(test_precision+test_recall+0.001)
 
                 self.logger.set_prefix("Epoch:{}\n".format(idx))
                 start = time.time()
-                train_loss, train_acc = self.train(train_data)
-                acc_delta = train_acc[0] - train_acc_last
-                train_acc_last = train_acc[0]
+                train_loss, train_acc, train_precision, train_recall = self.train(train_data)
+                acc_delta = train_acc - train_acc_last
+                train_acc_last = train_acc
                 elapsed = time.time() - start
                 # Logging
                 self.step, = self.sess.run([self.global_step])
@@ -405,9 +448,10 @@ class EASolver(object):
                     'train_perplexity': train_loss,
                     'epoch': idx,
                     'learning_rate': self.current_lr,
-                    'train_accuracy': train_acc[0],
+                    'train_accuracy': train_acc,
                     'acc_delta': acc_delta,
-                    'valid_accuracy': test_acc[0],
+                    'valid_accuracy': test_acc,
+                    'valid_f': test_f,
                     'elapsed': int(elapsed)
                 }
                 if self.print_state:
@@ -419,8 +463,8 @@ class EASolver(object):
                     self.current_lr = self.current_lr / 1.5
                     self.lr.assign(self.current_lr).eval()
                 if self.current_lr < 1e-5: break
-                if test_acc[0] > best_v_acc:
-                    best_v_acc = test_acc[0]
+                if test_acc > best_v_acc:
+                    best_v_acc = test_acc
                     self.saver.save(self.sess,
                                     os.path.join(self.checkpoint_dir, "MemN2N.model"),
                                     global_step=idx)
@@ -437,17 +481,18 @@ class EASolver(object):
             print(state)
 
     def print_report(self, base_valid):
-        best_state = self.get_best_valid()
+        best_acc = self.get_best_valid('valid_accuracy')
+        best_f = self.get_best_valid('valid_f')
 
-        print("base: {} : best(valid) {} yield at epoch {} , train_perplexity = {}".
-              format(base_valid, best_state['valid_accuracy'], best_state['epoch'], best_state["train_perplexity"]))
+        print("base: {} : best_acc(valid): {} best_f:{}".
+              format(base_valid, best_acc, best_f))
 
 
-    def get_best_valid(self):
-        max_valid_accuracy = 0
+    def get_best_valid(self, measure):
+        max_valid = 0
         best_state = None
         for state in self.log:
-            if state['valid_accuracy'] > max_valid_accuracy:
-                max_valid_accuracy = state['valid_accuracy']
+            if state[measure] > max_valid:
+                max_valid = state[measure]
                 best_state = state
-        return best_state
+        return best_state[measure]

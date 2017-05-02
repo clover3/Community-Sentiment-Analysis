@@ -5,14 +5,17 @@ from model_common import *
 class MemN2N(EASolver):
     def __init__(self, config, sess, w2v = None):
         super(MemN2N, self).__init__(config, sess)
+        print("MenN2N init")
 
         self.mem_size = config.max_sent
+        self.mid_size = 10
 
         self.LE = None
         self.DE = None
 
         self.SE = None
         self.QE = None
+        self.QE_0 = None
 
         self.EE = None
         self.SEE = None
@@ -70,10 +73,14 @@ class MemN2N(EASolver):
 
         self.EE = tf.Variable(tf.random_normal([self.n_entity, self.sdim, 1], stddev=self.init_std), name="EE")
         self.SEE = tf.Variable(tf.random_normal([self.nwords, self.sdim], stddev=self.init_std), name="SEE", dtype=tf.float32)
+
+        self.a = tf.Variable(tf.zeros([1]), name="a")
         self.b = tf.Variable(tf.zeros([1]), name="b")
 
         self.W = tf.Variable(tf.constant(0.00, shape=[3, 1]), name="W")
         self.W4 = tf.Variable(tf.constant([0.0], shape=[1]))
+        self.QE = tf.Variable(tf.random_normal([self.sdim * 2, self.mid_size], stddev=self.init_std))
+        self.QE_0 = tf.Variable(tf.random_normal([self.mid_size, 1], stddev=self.init_std))
 
     def make_memory_empty(self):
         # Step 0
@@ -109,8 +116,12 @@ class MemN2N(EASolver):
             return weights_3
 
         sent_feature = tf.concat([memory_text_BoW, query_text], 2)  # [ batch * context_len * (sdim*2)]
-        QE_tile = tf.reshape(tf.tile(self.QE, [self.batch_size, 1]), [self.batch_size, self.sdim * 2, 1])
-        weights_3 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len ]
+        QE_tile = tf.reshape(tf.tile(self.QE, [self.batch_size, 1]), [self.batch_size, self.sdim * 2, self.mid_size])
+        layer1 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len * sdim]
+        QE_0 = tf.reshape(tf.tile(self.QE_0, [self.batch_size,1]), [self.batch_size, self.mid_size, 1])
+        weights_3 = tf.matmul(layer1, QE_0) #
+
+        #weights_3 = tf.matmul(sent_feature, QE_tile)  # [ batch * context_len ]
         assert_shape(weights_3, (self.batch_size, context_len, 1))
         return weights_3
 
@@ -121,8 +132,9 @@ class MemN2N(EASolver):
         W_tile = tf.tile(self.W, [self.batch_size, 1])
         W_tile = tf.reshape(W_tile, [self.batch_size, 3, 1])  # [batch * 2 * 1]
 
-        base_weights = tf.matmul(weight_concat, W_tile)  # [batch * context_len * 1]
-        raw_weights = tf.scalar_mul(1. / context_len, base_weights)  # [batch * context_len * 1]
+        raw_weights = tf.matmul(weight_concat, W_tile)  # [batch * context_len * 1]
+        raw_weights = tf.sigmoid(self.a * weights_3 + self.b)
+        #raw_weights = tf.scalar_mul(1. / context_len, raw_weights)  # [batch * context_len * 1]
         return raw_weights
 
     def fetch_all_entity_at_target(self, target_idx):
@@ -144,8 +156,8 @@ class MemN2N(EASolver):
         self.make_memory_empty()
 
         self.init_first_slot(content, explicit_entity)
-        no_cascade = True
-        print("No Cascade")
+        no_cascade = False
+        print("Cascade")
         ## TODO : too many iteration...
         for context_len in range(1, self.mem_size):
             # 1) Select relevant article
