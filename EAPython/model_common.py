@@ -5,6 +5,12 @@ import numpy as np
 import tensorflow as tf
 from itertools import groupby
 
+def dump_data(data, path):
+    f = open(path, "w")
+    for entry in data:
+        None
+
+
 
 def split_train_test(all_data, n_fold=3):
     def get_thread(test_case):
@@ -23,7 +29,6 @@ def split_train_test(all_data, n_fold=3):
     for group in groups:
         folds[idx].append(group)
         idx = (idx + 1) % n_fold
-
     r = []
     for test_idx in range(n_fold):
         train = flatten(flatten(folds[0:test_idx] + folds[test_idx+1:]))

@@ -78,6 +78,27 @@ class EASolverSuite extends FunSuite {
 
   }
 
+  test("Compare precision/recall"){
+    val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")
+    val eval = new EAEval("..\\input\\entity_test1", dict)
+
+    val solverTarget = new TargetOnly(dict)
+    val solverRecent = new Recent(dict)
+    val solverFirst = new RecentsFirst(dict)
+    val solverFirstOnly = new FirstOnly(dict)
+    val mesolver = new MESolver(dict, eval.testCases)
+
+    val list : List[(EASolver, String)] = List((solverTarget,"Target"), (solverRecent, "Recent"), (solverFirst,"First"),
+        (solverFirstOnly,"FirstOnly"), (mesolver,"ME"))
+
+    list foreach { x =>
+      val name = x._2
+      val (precision, recall) = eval.getRecallPrecision(x._1)
+      val f = 2 * precision * recall / ( precision + recall + 0.01)
+      println(s"Accuracy[$name] : $precision , $recall , $f")
+    }
+  }
+
 
   test("Affinity - Threshold") {
     val dict = new EntityDict("C:\\work\\Code\\Community-Sentiment-Analysis\\input\\EntityDict.txt")

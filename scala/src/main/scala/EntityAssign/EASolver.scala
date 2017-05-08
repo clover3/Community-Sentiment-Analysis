@@ -36,12 +36,29 @@ class EATool(dict: EntityDict) {
     }
   }
 
+  def prevSentence(contexts: List[String]): Option[String] = {
+    contexts match {
+      case Nil => None
+      case head :: tail => {
+        prevSentence(tail) match {
+          case Some(s) => Some(s)
+            val headEntity = dict.extractAnyFrom(head)
+            if (headEntity.isDefined)
+              Some(head)
+            else
+              None
+          case None => None
+        }
+      }
+    }
+  }
+
   def firstEntity(texts : List[String]) : List[String] = {
     texts match {
       case Nil => Nil
-      case head::tail => {
+      case head :: tail => {
         val headEntity = dict.extractFrom(head)
-        if( headEntity.isEmpty )
+        if (headEntity.isEmpty)
           firstEntity(tail)
         else
           headEntity

@@ -206,17 +206,22 @@ def entity_find_acc(label_data_path):
     EL_IDX_LABEL       = 4
     EL_IDX_AUTHOR      = 5
     from entity_dict import EntityDict
-    entity_dict = EntityDict("..\\input\\EntityDict.txt", False)
+    entity_dict_full = EntityDict("..\\input\\EntityDict.txt")
+    entity_dict_3 = EntityDict("..\\input\\EntityDict.txt", 4)
     sentences = load_entity_label(label_data_path)
 
-    all_entity = []
-    for s in sentences:
-        content = s[EL_IDX_CONTENT]
-        es = [entity_dict.get_group(e) for e in entity_dict.extract_from(content)]
-        es = list(set(es))
+    def count_entity(sentences, entity_dict):
+        count = 0
+        for s in sentences:
+            content = s[EL_IDX_CONTENT]
+            es = [entity_dict.get_group(e) for e in entity_dict.extract_from(content)]
+            count += len(set(es))
+        return count
 
-        all_entity.append(es)
-    print(all_entity)
+    all_entity = count_entity(sentences, entity_dict_full)
+    found3 = count_entity(sentences, entity_dict_3)
+
+    print("All : {}, 3name : {}({})".format(all_entity, found3, float(found3)/all_entity) )
 
 
 def load_reddit():
@@ -269,14 +274,15 @@ def reddit_sentence_cutter():
 
 
 if __name__ == '__main__':
-    if True:
+    option = 3
+    if option == 1:
         reddit_sentence_cutter()
-    elif False:
+    elif option == 2:
         r = generate_sentence_context("data\\EntityLabel.csv")
         save_as_files(r, "data\\entity_test1")
 
         r = generate_sentence_context("data\\EntityLabel3.csv")
         save_as_files(r, "data\\entity_test3")
-    else:
+    elif option == 3:
         entity_find_acc("data\\EntityLabel3.csv")
         #gen_simple_entity()

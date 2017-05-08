@@ -4,7 +4,7 @@ import threading
 
 
 from clover_lib import *
-import gensim.models
+from gensim import corpora, models
 import itertools
 import random
 import time
@@ -70,7 +70,7 @@ class TFIDFAnalyzer:
         return self.model[bow]
 
     def load_from_file(self, path):
-        self.model = gensim.models.TfidfModel.load(path)
+        self.model = models.TfidfModel.load(path)
         self.dictionary = corpora.Dictionary.load(TFIDF_DICT_PICKLE_PATH)
 
     def dist(self, article1, article2):
@@ -98,7 +98,7 @@ class LDAAnalyzer:
         return self.model[bow]
 
     def load_from_file(self, path):
-        self.model = gensim.models.LdaModel.load(path)
+        self.model = models.LdaModel.load(path)
         self.dictionary = self.model.id2word
 
     def create_lda_model(self, text_list):
@@ -108,7 +108,7 @@ class LDAAnalyzer:
         corpus = [self.dictionary.doc2bow(text) for text in texts]
 
         # generate LDA model
-        self.model = gensim.models.ldamulticore.LdaMulticore(corpus, num_topics=100, id2word=self.dictionary, passes=20)
+        self.model = models.ldamulticore.LdaMulticore(corpus, num_topics=100, id2word=self.dictionary, passes=20)
         # lda_model = gensim.models.ldamodel.LdaModel(corpus, num_topics=20, id2word = dictionary, passes=20)
 
         self.model.save(LDA_PICKLE_PATH)
@@ -697,6 +697,30 @@ def load_reddit():
         print line[IDX_REDDIT_AUTHOR]
 
 
+def build_LDA():
+    cursor = 0000
+    size = 100000
+    all_data = load_csv("..\\input\\clean_guldang_tkn.csv")
+    print("data size : {}".format(len(all_data)))
+    data = all_data[cursor:cursor + size]
+    print("DEBUG : Parsing corpus...")
+    data = parse_token(data)
+
+    def print_invalid_data():
+        for text in data:
+            if len(text) < 9:
+                print(text)
+
+    print_invalid_data()
+
+    def get_text_list(csv_data):
+        return list(map(lambda x: x[IDX_TOKENS], csv_data))
+
+    corpus = get_text_list(data)
+    lda = LDAAnalyzer()
+    lda.create_lda_model(corpus)
+
+
 def recommendation_ranking():
 
     # 1. score=(추천-비추천)이 2 이상인 경우
@@ -756,13 +780,14 @@ def save_relation():
 
 if __name__ == '__main__':
     freeze_support()
+    build_LDA()
     # test_on_guldang()
     #load_reddit()
     # process_bobae()
     # apply_recovered()
     #generate_context_pair()
     #save_relation()
-    load_relation_save_as_text()
+    #load_relation_save_as_text()
     #recommendation_ranking()
 # create_lda_model(["썩션은 필요없구요 블로우작업은 안하시는게 낫습니다. 수분이 들어가요 문제는 수분거를만한 필터를 단 콤프레셔 사용하는 업체가 국내엔 없는걸로 알고있습니다.","golf20tdi님// 그렇죠.. 저도 에어는 절대하지말라해서 자유낙하만 했는데 충분하군요 with beta"])
 

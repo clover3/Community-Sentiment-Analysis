@@ -145,8 +145,8 @@ public class MaxEnt {
                 w[i] += delta;
                 l += delta + " ";
             }
-            System.out.println("ITERATIONS: " + k + " " + Arrays.toString(w));
-            System.out.println(l);
+            //System.out.println("ITERATIONS: " + k + " " + Arrays.toString(w));
+            //System.out.println(l);
         }
     }
 
@@ -180,7 +180,7 @@ public class MaxEnt {
         for (int i = 0; i < functions.size(); i++) {
             empirical_expects[i] /= 1.0 * N;
         }
-        System.out.println(Arrays.toString(empirical_expects));
+        //System.out.println(Arrays.toString(empirical_expects));
     }
 
     private int apply_f_sharp(Feature feature, int y) {

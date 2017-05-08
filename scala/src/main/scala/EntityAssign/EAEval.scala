@@ -121,6 +121,7 @@ class EACase(val entity : Iterable[String], val targetSent : String, val context
 }
 
 class EAEval(dirPath : String, entityDict: EntityDict) {
+  val tool = new EATool(entityDict)
   def readEuckr(file:File) : Stream[String] = {
     val br: BufferedReader =  new BufferedReader(new InputStreamReader(new FileInputStream(file),"euc-kr"))
     val strs: Stream[String] = Stream.continually(br.readLine()).takeWhile(_ != null)
@@ -162,6 +163,7 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
     }
 
   }
+
   val testCases : List[EACase] = {
     // Enum Dir
     val files : List[File] = {
@@ -187,7 +189,32 @@ class EAEval(dirPath : String, entityDict: EntityDict) {
     val total  = results.length
 
     val suc :Int = (testCases zip results) count isSuccess
-    return (suc.toDouble/total)
+    (suc.toDouble/total)
+  }
+
+  // return TP, FP, FN
+  def countPR(arg: (EACase, List[String])) : (Int,Int,Int) = {
+    val testcase = arg._1
+    val candidate : Set[Int] = tool.allEntity(testcase.targetSent::testcase.context) map entityDict.getGroup
+    val answer : Set[Int] = (arg._1.entity map entityDict.getGroup).toSet
+    val found : Set[Int] = (arg._2 map entityDict.getGroup).toSet
+    val explicit_entity : Set[Int] = (entityDict.extractFrom(testcase.targetSent) map entityDict.getGroup).toSet
+    val real_hidden = answer &~ explicit_entity
+    val found_hidden = found &~ explicit_entity
+
+    val tp: Set[Int] = real_hidden & found_hidden
+    val fp = found_hidden &~ real_hidden
+    val fn = real_hidden &~ found_hidden
+    (tp.size, fp.size, fn.size)
+  }
+
+  def getRecallPrecision(solver:EASolver) : (Double,Double) = {
+    val results : List[List[String]] = testCases map solver.solve
+    val counts = ((testCases zip results) map countPR).unzip3
+    val (tp, fp, fn) : (Int,Int,Int) = (counts._1.sum, counts._2.sum, counts._3.sum)
+    val precision : Double = tp.toDouble / (tp+fp)
+    val recall : Double = tp.toDouble / (tp+fn)
+    (precision, recall)
   }
 
   def showResult(solver : EASolver) = {

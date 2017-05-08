@@ -33,6 +33,10 @@ class MemN2N(EASolver):
         self.prediction = None
         self.match = None
 
+        print("Using Sigmoid")
+        self.setting_sigmoid = True
+
+
     def init_LE(self):
         option = 'random'
         option = 'fixed'
@@ -132,8 +136,10 @@ class MemN2N(EASolver):
         W_tile = tf.tile(self.W, [self.batch_size, 1])
         W_tile = tf.reshape(W_tile, [self.batch_size, 3, 1])  # [batch * 2 * 1]
 
+        print("Using all three weights")
         raw_weights = tf.matmul(weight_concat, W_tile)  # [batch * context_len * 1]
-        raw_weights = tf.sigmoid(self.a * weights_3 + self.b)
+        if self.setting_sigmoid :
+            raw_weights = tf.sigmoid(self.a * weights_3 + self.b)
         #raw_weights = tf.scalar_mul(1. / context_len, raw_weights)  # [batch * context_len * 1]
         return raw_weights
 
